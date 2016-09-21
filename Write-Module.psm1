@@ -1,4 +1,9 @@
-﻿#region Public-Functions
+﻿#region Script-Variables
+[string]$script:DebugPreviousLineMoniker = ([string]::Empty)
+[bool]$script:DebugPrvsLineMatch = ($false)
+#endregion Script-Variables
+
+#region Public-Functions
 function Write-Debug
 {
     [CmdletBinding(

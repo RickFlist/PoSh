@@ -55,7 +55,9 @@ Write-Host ($divLine)
 Write-Host
 
 Write-Information ('An example of standard Write-Debug messages:')
+Write-Debug ('Starting first example:')
 Invoke-ChainStepOne
+Write-Debug ('First example finished')
 
 Write-Host
 Write-Host ($divLine)
@@ -69,7 +71,9 @@ $Global:DebugPreference = 'Continue'
 $Global:InformationPreference = 'Continue'
 
 Write-Information ('An example of augmented Write-Debug output:')
+Write-Debug ('Starting second example:')
 Invoke-ChainStepOne
+Write-Debug ('Second example finished')
 Write-Host
 
 Write-Host ('The augmented Write-Debug contains additional information in the following order:') -ForegroundColor Green
