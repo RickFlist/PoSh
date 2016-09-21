@@ -1,19 +1,16 @@
 ﻿#region Public-Functions
 function Write-Debug
 {
-    #region Parameters
-    Param
-    (
     [CmdletBinding(
         SupportsShouldProcess=$false,
         ConfirmImpact = "Low",
         HelpUri='http://go.microsoft.com/fwlink/?LinkID=113424',
         RemotingCapability='None'
     )]
-    
-    ### ParameterSet - Setless Parameters ###
-    
-    #region 00-$Message
+
+    Param
+    (
+
     [Parameter(
         Position=00,
         Mandatory=$true,
@@ -24,9 +21,7 @@ function Write-Debug
     [AllowEmptyString()]
     [string]
     $Message
-    #endregion
     ,
-    #region 01-$Tabs
     [Parameter(
         Position=01,
         HelpMessage="Number of tabs between the timestap and the message"
@@ -34,32 +29,25 @@ function Write-Debug
     [ValidateNotNullOrEmpty()]
     [Int]
     $Tabs = 0
-    #endregion
     ,
-    #region 02 - $NewLines
     [Parameter(
         Position=02,
         HelpMessage="Number of new lines to enter after the message"
     )]
     [ValidateNotNullOrEmpty()]
     [int] $NewLines = 1
-    #endregion -- - $NewLines
     ,
-    #region SW - $NoHeader
     [Parameter(
         HelpMessage="No script information header"
     )]
     [ValidateNotNullOrEmpty()]
     [Switch] $NoHeader
-    #endregion -- - $NoHeader
     
     )
-    #endregion
 
-    #region Begin{}
     BEGIN
     {
-        #region ParameterStuff
+        #region Parameter-Stuff
         try
         {
             ## Access the REAL Foreach-Object command, so that command wrappers do not interfere with this script
@@ -90,30 +78,25 @@ function Write-Debug
             $Ex = $_
             throw $Ex
         }
-        #endregion
+        #endregion Parameter-Stuff
         
         #region Create-Indent-String
         function New-Indent
         {
             param
             (
-                #region 00 - $Indents
                 [Parameter(
                     Position=00
                 )]
                 [int] $Indents = 0
-                #endregion -- - $Indents
                 ,
-                #region 01 - $IndentChar
                 [Parameter(
                     Position=01
                 )]
                 [ValidateNotNullOrEmpty()]
                 [string] $IndentChar = ' '
-                #endregion -- - $IndentChar
             )
             
-            #region Process {}
             PROCESS
             {
                 [int]$IndentLngth = 3
@@ -130,13 +113,10 @@ function Write-Debug
                 
                 Write-Output ($IndentString)
             }
-            #endregion Process {}
         }
         #endregion Create-Indent-String
     }
-    #endregion
 
-    #region Process{}
     PROCESS
     {
         try
@@ -263,9 +243,7 @@ function Write-Debug
             throw $Ex
         }
     }
-    #endregion
 
-    #region End{}
     end
     {
         try
@@ -279,7 +257,6 @@ function Write-Debug
             throw $Ex
         }
     }
-    #endregion
 
     #region DynamicParam{}
     dynamicparam
