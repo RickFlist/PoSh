@@ -47,8 +47,8 @@ if ((Get-Module | ?{$_.Name -eq 'Write-Module'}))
 #endregion Functions
 
 #region Execution
-$DebugPreference = 'Continue'
-$InformationPreference = 'Continue'
+$Global:DebugPreference = 'Continue'
+$Global:InformationPreference = 'Continue'
 $divLine = ('*' * $Host.UI.RawUI.WindowSize.Width)
 
 Write-Host ($divLine)
@@ -64,6 +64,9 @@ Write-Host
 $modulePath = Join-Path -Path (Split-Path -Path  $PSCommandPath -Parent) -ChildPath 'Write-Module.psd1' -Resolve
 Write-Information -MessageData ('Importing Write-Module PoSh Demonstration Module')
 Import-Module $modulePath -Global -Force
+
+$Global:DebugPreference = 'Continue'
+$Global:InformationPreference = 'Continue'
 
 Write-Information ('An example of augmented Write-Debug output:')
 Invoke-ChainStepOne
