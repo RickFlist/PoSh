@@ -8,6 +8,13 @@ $Script:defDomainKeyName = ([String] ('DefaultDomainName'))
 $Script:defUsernameKeyName = ([String] ('DefaultUserName'))
 $Script:defPasswordKeyName = ([String] ('DefaultPassword'))
 #endregion For: *-Autologin
+
+#region For:New-VersionNumber
+[int]$script:NvnMajor = 1
+[int]$script:NvnMinor = 0
+[int]$script:NvnBuild = (Get-Date -Format 'yyMMdd')
+[int]$script:NvnRevision = 0
+#endregion For:New-VersionNumber
 #endregion Script-Variables
 
 #region Functions
@@ -457,349 +464,392 @@ function Set-VerbosePreference
 }
 #endregion *-*Preference
 
-#region Profile-Commands
-function Import-CommandHistory
+#region ISE-Only
+if ($Host.Name -eq 'Windows PowerShell ISE Host')
 {
-    [CmdletBinding()]
-    param(
-        [Parameter(ValueFromPipeline=$true)]
-        [IO.FileInfo]
-        $Path = (Join-Path -Path $Home -ChildPath .ps_history)
-    )
-
-    Clear-History
-    $xmlHist = Import-Clixml -Path $Path
-    $count = 1
-    foreach ($entry in $xmlHist)
+    function Get-ISEShortcut
     {
-        $entry.Id = $count
-        $count++
-        Add-History -InputObject $entry
+        [CmdletBinding()]
+        param(
+            [ValidateNotNullOrEmpty()]
+            [ValidateSet('Name','Value')]
+            [String] 
+            $SortBy = 'Value'
+    
+        )
+
+        $gps = $psISE.GetType().Assembly
+        $rm = New-Object System.Resources.ResourceManager GuiStrings,$gps 
+        $rm.GetResourceSet((Get-Culture),$True,$True) | Where Value -CMatch "(F\d)|(Shift\+)|(Alt\+)|(Ctrl\+)" | Sort-Object $SortBy | Format-Table -AutoSize -Wrap
     }
-}
 
-function Load-Profile 
-{
-    # Window-Title
-    Set-PSWindowTitle -Title Coding
-
-    # Path
-    Set-Location -Path 'C:\'
-
-    # Modules
-    Import-Module -Name PSReadline -Force -Global
-
-    # Aliases
-    New-Alias -Name ctc -Value ConvertTo-TitleCase -Force
-    New-Alias -Name clip -Value Set-Clipboard -Force
-    New-Alias -Name ch -Value Copy-Hostname -Force
-    New-Alias -Name hostname -Value Get-Hostname -Force
-    New-Alias -Name Set-Debug -Value Set-DebugPreference -Force
-    New-Alias -Name Set-Verbose -Value Set-VerbosePreference -Force
-}
-
-function Prompt
-{
-	# Color for seperator ' -|- '
-	$SeperatorColor = 'DarkGray'
-#	$SeperatorColor = Get-Random -Min 1 -Max 16
-	
-	# DateTime
-	Write-Host "$([DateTime]::Now.ToString("MM/dd HH:mm:ss"))" -NoNewline -ForegroundColor Gray
-	
-	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
-	# IsAdmin
-	$Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $Principal = [Security.Principal.WindowsPrincipal] $identity
-	
-	if (Test-Path variable:/PSDebugContext)
-	{
-		Write-Host '[DBG]' -ForegroundColor Yellow -NoNewline
-	} 
-	elseif ($principal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+    function Reset-IseTab 
     {
-		Write-Host "[ADMIN]" -ForegroundColor Red -NoNewline
-	}
-	else
-	{
-		Write-Host "[NOADMIN]" -ForegroundColor Gray -NoNewline
-	}
-	
-	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
-	$currentDirectory = Get-Location
-	Write-Host ("History: {0:00}" -f ((Get-History).Count)) -ForegroundColor Gray #-NoNewline
-	
-#	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
-	# Current folder
-	Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
-	Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
-	Write-Host ("$('>' * ($NestedPromptLevel + 1))")
-}
-
-function Start-QLApps
-{
-    $taskbarFldr = Join-Path -Path $env:APPDATA -ChildPath 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar' -Resolve
-
-    $allLnks = Get-ChildItem -Path $taskbarFldr -Filter *.lnk -File
-
-    foreach ($link in $allLnks)
-    {
-        Write-Host ('Starting {0}' -f $link.BaseName)
-        Start-Process -FilePath $link.FullName
-    }
-
-    Start-Sleep -Seconds 10
-    Exit 0
-}
-#endregion Profile-Commands
-
-#region Shell-Commands
-function ConvertTo-TitleCase
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
-        [ValidateNotNullOrEmpty()]
-        [string] 
-        $InputObject,
-
-        [Switch] 
-        $PassThru
-    )
-
-    $retVal = ((Get-Culture).TextInfo.ToTitleCase($InputObject))
-
-    if ($PassThru.IsPresent)
-    {
-        Write-Output $retVal
-    }
-    else
-    {
-        Set-Clipboard -Value $retVal
-    }
-}
-
-function Copy-Hostname
-{
-    [CmdletBinding()]
-    param (
-	    [switch]$Short		= $true,
-	    [switch]$Domain		= $false,
-	    [switch]$FQDN		= $false
-    )
-
-    $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
-    if ( $FQDN ) {
-	    Set-Clipboard ("{0}.{1}" -f $ipProperties.HostName.ToUpper(), $ipProperties.DomainName)
-    }
-    if ( $Domain ) {
-	    Set-Clipboard ($ipProperties.DomainName.ToLower())
-    }
-    if ( $Short ) {
-	    Set-Clipboard ($ipProperties.HostName.ToUpper())
-    }
-}
-
-function Export-CommandHistory 
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(ValueFromPipeline=$true)]
-        [IO.FileInfo]
-        $Path = (Join-Path -Path $Home -ChildPath .ps_history)
-    )
-
-    $fullHistory = [Object[]] @()
-
-    if (Test-Path -Path $Path)
-    {
-        $fullHistory += Import-Clixml -Path $Path
-    }
-
-    $fullHistory += Get-History
-
-    $fullHistory | Sort-Object -Property StartExecutionTime | Select-Object -Unique| Export-Clixml -Path $Path -Force
-
-}
-
-function Get-Hostname
-{
-    # .SYNOPSIS
-    #	Print the hostname of the system.
-    # .DESCRIPTION
-    #	This function prints the hostname of the system. You can additionally output the DNS
-    #	domain or the FQDN by using the parameters as described below.
-    # .PARAMETER Short
-    #	(Default) Print only the computername, i.e. the same value as returned by $env:computername
-    # .PARAMETER Domain
-    #	If set, print only the DNS domain to which the system belongs. Overrides the Short parameter.
-    # .PARAMETER FQDN
-    #	If set, print the fully-qualified domain name (FQDN) of the system. Overrides the Domain parameter.
-
-    param (
-	    [switch]$Short		= $true,
-	    [switch]$Domain		= $false,
-	    [switch]$FQDN		= $false
-    )
-
-    $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
-    if ( $FQDN ) {
-	    return "{0}.{1}" -f $ipProperties.HostName, $ipProperties.DomainName
-    }
-    if ( $Domain ) {
-	    return $ipProperties.DomainName
-    }
-    if ( $Short ) {
-	    return $ipProperties.HostName
-    }
-}
-
-function Get-PerformanceHistory 
-{
-    [CmdletBinding()]
-    param(
-        [ValidateNotNullOrEmpty()]
-        [Int] 
-        $Count = 1,
-
-        [ValidateNotNullOrEmpty()]
-        [Int[]] 
-        $Id = @((Get-History -Count 1| Select Id).Id),
-
-        [Switch]
-        $PassThru
-    )
-
-    $Parser = [System.Management.Automation.PsParser]
-    function FormatTimeSpan($ts) 
-    {
-        if($ts.Minutes) {
-            if($ts.Hours) {
-                if($ts.Days) {
-                    return "{0:##}d {1:00}:{2:00}:{3:00}.{4:0000}" -f $ts.Days, $ts.Hours, $ts.Minutes, $ts.Seconds, $ts.Milliseconds
-                }
-
-                return "{0:##}:{1:00}:{2:00}.{3:0000}" -f $ts.Hours, $ts.Minutes, $ts.Seconds, $ts.Milliseconds
+         <#
+        .Synopsis
+           Moves open files to a new PowerShell tab
+        .Example
+           Reset-IseTab –Save { function Prompt {'>'}  }
+        #>
+        Param(
+            [switch]$SaveFiles,
+            [ScriptBlock]$InvokeInNewTab
+        )
+ 
+        $Current = $psISE.CurrentPowerShellTab    
+        $FileList = @()
+            
+        $Current.Files | ForEach-Object {        
+            if ($SaveFiles -and (-not $_.IsSaved)) {
+ 
+                Write-Verbose "Saving $($_.FullPath)"           
+                try {
+                    $_.Save()             
+                    $FileList  += $_     
+                } catch [System.Management.Automation.MethodInvocationException] {
+                    # Save will fail saying that you need to SaveAs because the 
+                    # file doesn't have a path.
+                    Write-Verbose "Saving $($_.FullPath) Failed"                           
+                }            
+            } elseif ($_.IsSaved) {            
+                $FileList  += $_
             }
-
-            return "{0:##}:{1:00}.{2:0000}" -f $ts.Minutes, $ts.Seconds, $ts.Milliseconds
         }
-        
-        return "{0:#0}.{1:0000}" -f $ts.Seconds, $ts.Milliseconds
+                   
+        $NewTab = $psISE.PowerShellTabs.Add() 
+        $FileList | ForEach-Object { 
+            $NewTab.Files.Add($_.FullPath) | Out-Null
+            $Current.Files.Remove($_) 
+        }
+ 
+        # If a code block was to be sent to the new tab, add it here. 
+        #  Think module loading or dot-sourcing something to put your environment
+        # correct for the specific debug session.
+        if ($InvokeInNewTab) {
+         
+            Write-Verbose "Will call this after the Tab Loads:`n $InvokeInNewTab"
+         
+            # Wait for the new tab to be ready to run more commands.
+            While (-not $NewTab.CanInvoke) {
+                Start-Sleep -Seconds 1
+            }
+ 
+            $NewTab.Invoke($InvokeInNewTab)
+        }
+ 
+        if ($Current.Files.Count -eq 0) {        
+            #Only remove the tab if all of the files closed.
+            $psISE.PowerShellTabs.Remove($Current)
+        }
     }
 
-    # if there's only one id, then the count counts, otherwise we just use the ids
-    # ... basically:    { 1..$count | % { $id += $id[-1]-1 }  }
-    if($Id.Count -eq 1) { $Id = ($Id[0])..($Id[0]-($Count-1)) } 
-    
-    # so we can call it with just the IDs
-    $cmdHistory = Get-History -Id $Id
-    $measuredObjs = New-Object System.Collections.ArrayList
-    foreach ($cmdId in $cmdHistory)
+    #region ISE-Lines
+#requires -version 2.0
+## ISE-Lines module v 1.2
+##############################################################################################################
+## Provides Line cmdlets for working with ISE
+## Duplicate-Line - Duplicates current line
+## Conflate-Line - Conflates current and next line
+## MoveUp-Line - Moves current line up
+## MoveDown-Line - Moves current line down
+## Delete-TrailingBlanks - Deletes trailing blanks in the whole script
+##
+## Usage within ISE or Microsoft.PowershellISE_profile.ps1:
+## Import-Module ISE-Lines.psm1
+##
+##############################################################################################################
+## History:
+## 1.2 - Minor alterations to work with PowerShell 2.0 RTM and Documentation updates (Hardwick)
+##       Include Delete-BlankLines function (author Kriszio I believe)
+## 1.1 - Bugfix and remove line continuation character while joining for Conflate-Line function (Kriszio)
+## 1.0 - Initial release (Poetter)
+##############################################################################################################
+
+## Duplicate-Line
+##############################################################################################################
+## Duplicates current line
+##############################################################################################################
+function Duplicate-Line
+{
+    $editor = $psISE.CurrentFile.Editor
+    $caretLine = $editor.CaretLine
+    $caretColumn = $editor.CaretColumn
+    $text = $editor.Text.Split("`n")
+    $line = $text[$caretLine -1]
+    $newText = $text[0..($caretLine -1)]
+    $newText += $line
+    $newText += $text[$caretLine..($text.Count -1)]
+    $editor.Text = [String]::Join("`n", $newText)
+    $editor.SetCaretPosition($caretLine, $caretColumn)
+}
+
+## Conflate-Line
+##############################################################################################################
+## Conflates current and next line
+## v 1.1 fixed bug on last but one line and remove line continuation character while joining
+##############################################################################################################
+function Conflate-Line
+{
+    $editor = $psISE.CurrentFile.Editor
+    $caretLine = $editor.CaretLine
+    $caretColumn = $editor.CaretColumn
+    $text = $editor.Text.Split("`n")
+    if ( $caretLine -ne $text.Count )
     {
-        $msr = $null           
-   
-        $tok = $Parser::Tokenize( $cmdId.CommandLine, [ref]$null )
-        if( ($tok[0].Type -eq "Number") -and 
-            ($tok[0].Content -le 1) -and 
-            ($tok[2].Type -eq "Number") -and 
-            ($tok[1].Content -eq "..") )
+        $line = $text[$caretLine -1] + $text[$caretLine] -replace ("(``)?`r", "")
+        $newText = @()
+        if ( $caretLine -gt 1 )
         {
-            $Count = ([int]$tok[2].Content) - ([int]$tok[0].Content) + 1
+            $newText = $text[0..($caretLine -2)]
         }
-   
-        $com = @( $tok | Where-Object {$PSItem.Type -eq "Command"} | 
-                         ForEach-Object { Get-Command $PSItem.Content -ErrorAction Ignore } | 
-                         Where-Object { $PSItem.CommandType -eq "ExternalScript" } |
-                         ForEach-Object { $PSItem.Path } )
-
-        # If we actually got a script, measure it out
-        if($com.Count -gt 0){
-            $msr = Get-Content -path $com | Measure-Object -Line -Word -Character
-        } else {
-            $msr = Measure-Object -in $cmdId.CommandLine -Line -Word -Character
+        $newText += $line
+        if ( $caretLine -ne $text.Count - 1)
+        {
+            $newText += $text[($caretLine +1)..($text.Count -1)]
         }
-        
-        $cmdType = $null
-
-        if ($com.Count -gt 0) 
-        {$cmdType = "Script"}
-        else
-        {$cmdType = "Command"}
-
-        [Void]$measuredObjs.Add( [PSCustomObject]@{
-            'Id'          = $cmdId.Id
-            'Duration'    = (FormatTimeSpan ($cmdId.EndExecutionTime - $cmdId.StartExecutionTime))
-            'Average'     = (FormatTimeSpan ([TimeSpan]::FromTicks( (($cmdId.EndExecutionTime - $cmdId.StartExecutionTime).Ticks / $Count) )))
-            'Lines'       = $msr.Lines
-            'Words'       = $msr.Words
-            'Chars'       = $msr.Characters
-            'Type'        = $cmdType
-            'Command'     = $cmdId.CommandLine
-            'StartTime'   = $cmdId.StartExecutionTime
-            'EndTime'     = $cmdId.EndExecutionTime
-        } )        
+        $editor.Text = [String]::Join("`n", $newText)
+        $editor.SetCaretPosition($caretLine, $caretColumn)
     }
-    
-    # default formatting values
-    $avgColSize = 0; $durColSize = 0; $typeColSize = 0
+}
 
-    # I have to figure out what the longest time string is to make it look its best
-    foreach ($mObj in $measuredObjs)
+## MoveUp-Line
+##############################################################################################################
+## Moves current line up
+##############################################################################################################
+function MoveUp-Line
+{
+    $editor = $psISE.CurrentFile.Editor
+    $caretLine = $editor.CaretLine
+    if ( $caretLine -ne 1 )
     {
-        if ($avgColSize -lt $mObj.Average.Length) { $avgColSize = $mObj.Average.Length }
-        if ($durColSize -lt $mObj.Duration.Length) { $durColSize = $mObj.Duration.Length }
-        if ($typeColSize -lt $mObj.Type.Length) { $typeColSize = $mObj.Type.Length }
-
+        $caretColumn = $editor.CaretColumn
+        $text = $editor.Text.Split("`n")
+        $line = $text[$caretLine -1]
+        $lineBefore = $text[$caretLine -2]
+        $newText = @()
+        if ( $caretLine -gt 2 )
+        {
+            $newText = $text[0..($caretLine -3)]
+        }
+        $newText += $line
+        $newText += $lineBefore
+        if ( $caretLine -ne $text.Count )
+        {
+            $newText += $text[$caretLine..($text.Count -1)]
+        }
+        $editor.Text = [String]::Join("`n", $newText)
+        $editor.SetCaretPosition($caretLine - 1, $caretColumn)
     }
+}
 
-    if($PassThru.IsPresent)
+## MoveDown-Line
+##############################################################################################################
+## Moves current line down
+##############################################################################################################
+function MoveDown-Line
+{
+    $editor = $psISE.CurrentFile.Editor
+    $caretLine = $editor.CaretLine
+    $caretColumn = $editor.CaretColumn
+    $text = $editor.Text.Split("`n")
+    if ( $caretLine -ne $text.Count )
     {
-        Write-Output $measuredObjs
+        $line = $text[$caretLine -1]
+        $lineAfter = $text[$caretLine]
+        $newText = @()
+        if ( $caretLine -ne 1 )
+        {
+            $newText = $text[0..($caretLine -2)]
+        }
+        $newText += $lineAfter
+        $newText += $line
+        if ( $caretLine -lt $text.Count -1 )
+        {
+            $newText += $text[($caretLine +1)..($text.Count -1)]
+        }
+        $editor.Text = [String]::Join("`n", $newText)
+        $editor.SetCaretPosition($caretLine +1, $caretColumn)
+    }
+}
+
+## Delete-TrailingBlanks
+##############################################################################################################
+## Deletes trailing blanks in the whole script
+##############################################################################################################
+function Delete-TrailingBlanks
+{
+    $editor = $psISE.CurrentFile.Editor
+    $caretLine = $editor.CaretLine
+    $newText = @()
+    foreach ( $line in $editor.Text.Split("`n") )
+    {
+        $newText += $line -replace ("\s+$", "")
+    }
+    $editor.Text = [String]::Join("`n", $newText)
+    $editor.SetCaretPosition($caretLine, 1)
+}
+
+## Delete-BlankLines
+##############################################################################################################
+## Deletes blank lines from the selected text
+##############################################################################################################
+function Delete-BlankLines
+{
+# Code from the ISECream Archive (http://psisecream.codeplex.com/), originally named Remove-IseEmptyLines
+
+    # Todo it would be nice to keep the caretposition, but I found no easy way
+    # of course you can split the string into an array of lines
+    $editor = $psISE.CurrentFile.Editor
+    #$caretLine = $editor.CaretLine
+    if ($editor.SelectedText)
+    {
+        Write-Host 'selected'
+        $editor.InsertText(($editor.SelectedText -replace '(?m)\s*$', ''))
     }
     else
     {
-    $measuredObjs | `
-        Sort-Object Id | `
-        Format-Table Id,`
-                     @{l=("{0,-$durColSize}" -f "Duration");e={"{0:#.#,$durColSize}" -f $PSItem.Duration}},`
-                     @{l=("{0,-$avgColSize}" -f "Average");e={"{0:#.#,$avgColSize}" -f $PSItem.Average}},`
-                     Lines,`
-                     Words,`
-                     Chars,`
-                     @{l=("{0,-$typeColSize}" -f "Type");e={"{0:#.#,$typeColSize}" -f $PSItem.Type}},`
-                     Command `
-                     -AutoSize -Wrap
+        $editor.Text = $editor.Text -replace '(?m)\s*$', ''
     }
+    $editor.SetCaretPosition(1, 1)
 }
 
-function Lock-WorkStation
-{
-	$signature = @"
-[DllImport("user32.dll", SetLastError = true)]
-public static extern bool LockWorkStation();
-"@
+    ##############################################################################################################
+    ## Inserts a submenu Lines to ISE's Custum Menu
+    ## Inserts command Duplicate Line to submenu Lines
+    ## Inserts command Conflate Line Selected to submenu Lines
+    ## Inserts command Move Up Line to submenu Lines
+    ## Inserts command Move Down Line to submenu Lines
+    ## Inserts command Delete Trailing Blanks to submenu Lines
+    ## Inserts command Delete Blank Lines to submenu Lines
+    ##############################################################################################################
+    if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Lines" } ) )
+    {
+	    $linesMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Lines",$null,$null) 
+	    $null = $linesMenu.Submenus.Add("Duplicate Line", {Duplicate-Line}, "Ctrl+Alt+D")
+	    $null = $linesMenu.Submenus.Add("Conflate Line", {Conflate-Line}, "Ctrl+Alt+J")
+	    $null = $linesMenu.Submenus.Add("Move Up Line", {MoveUp-Line}, "Ctrl+Shift+Up")
+	    $null = $linesMenu.Submenus.Add("Move Down Line", {MoveDown-Line}, "Ctrl+Shift+Down")
+	    $null = $linesMenu.Submenus.Add("Delete Trailing Blanks", {Delete-TrailingBlanks}, "Ctrl+Shift+Del")
+	    $null = $linesMenu.Submenus.Add("Delete Blank Lines", {Delete-BlankLines}, "Ctrl+Shift+Ins")
+    }
 
-	$LockWorkStation = Add-Type -memberDefinition $signature -name "Win32LockWorkStation" -namespace Win32Functions -passthru
-	$LockWorkStation::LockWorkStation() | Out-Null
+    # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
+    # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
+    # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
+    # Add-IseMenu -Name "Lines" @{            
+    #    "Duplicate Line"  = {Duplicate-Line}| Add-Member NoteProperty order  1 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+D" -PassThru
+    #    "Conflate Line" = {Conflate-Line}| Add-Member NoteProperty order  2 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+J" -PassThru
+    #    "Move Up Line" = {MoveUp-Line}| Add-Member NoteProperty order  3 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Up" -PassThru
+    #    "Move Down Line"   = {MoveDown-Line}| Add-Member NoteProperty order  4 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Down" -PassThru
+    #    "Delete Trailing Blanks" = {Delete-TrailingBlanks}| Add-Member NoteProperty order  5 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Del" -PassThru
+    #    "Delete Blank Lines" = {Delete-BlankLines} | Add-Member NoteProperty order  6 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+End" -PassThru
+    #    }
+    #endregion ISE-Lines
+
+    #region ISE-Comments
+    #requires -version 2.0
+    ## ISE-Comments module v 1.1
+    ##############################################################################################################
+    ## Provides Comment cmdlets for working with ISE
+    ## ConvertTo-BlockComment - Comments out selected text with <# before and #> after
+    ## ConvertTo-BlockUncomment - Removes <# before and #> after selected text
+    ## ConvertTo-Comment - Comments out selected text with a leeding # on every line 
+    ## ConvertTo-Uncomment - Removes leeding # on every line of selected text
+    ##
+    ## Usage within ISE or Microsoft.PowershellISE_profile.ps1:
+    ## Import-Module ISE-Comments.psm1
+    ##
+    ## Note: The IsePack, a part of the PowerShellPack, also contains a "Toggle Comments" command,
+    ##       but it does not support Block Comments
+    ##       http://code.msdn.microsoft.com/PowerShellPack
+    ##
+    ##############################################################################################################
+    ## History:
+    ## 1.1 - Minor alterations to work with PowerShell 2.0 RTM and Documentation updates (Hardwick)
+    ## 1.0 - Initial release (Poetter)
+    ##############################################################################################################
+
+
+    ## ConvertTo-BlockComment
+    ##############################################################################################################
+    ## Comments out selected text with <# before and #> after
+    ## This code was originaly designed by Jeffrey Snover and was taken from the Windows PowerShell Blog.
+    ## The original function was named ConvertTo-Comment but as it comments out a block I renamed it.
+    ##############################################################################################################
+    function ConvertTo-BlockComment
+    {
+        $editor = $psISE.CurrentFile.Editor
+        $CommentedText = "<#`n" + $editor.SelectedText + "#>"
+        # INSERTING overwrites the SELECTED text
+        $editor.InsertText($CommentedText)
+    }
+
+    ## ConvertTo-BlockUncomment
+    ##############################################################################################################
+    ## Removes <# before and #> after selected text
+    ##############################################################################################################
+    function ConvertTo-BlockUncomment
+    {
+        $editor = $psISE.CurrentFile.Editor
+        $CommentedText = $editor.SelectedText -replace ("^<#`n", "")
+        $CommentedText = $CommentedText -replace ("#>$", "")
+        # INSERTING overwrites the SELECTED text
+        $editor.InsertText($CommentedText)
+    }
+
+    ## ConvertTo-Comment
+    ##############################################################################################################
+    ## Comments out selected text with a leeding # on every line
+    ##############################################################################################################
+    function ConvertTo-Comment
+    {
+        $editor = $psISE.CurrentFile.Editor
+        $CommentedText = $editor.SelectedText.Split("`n")
+        # INSERTING overwrites the SELECTED text
+        $editor.InsertText( "#" + ( [String]::Join("`n#", $CommentedText)))
+    }
+
+    ## ConvertTo-Uncomment
+    ##############################################################################################################
+    ## Comments out selected text with <# before and #> after
+    ##############################################################################################################
+    function ConvertTo-Uncomment
+    {
+        $editor = $psISE.CurrentFile.Editor
+        $CommentedText = $editor.SelectedText.Split("`n") -replace ( "^#", "" )
+        # INSERTING overwrites the SELECTED text
+        $editor.InsertText( [String]::Join("`n", $CommentedText))
+    }
+
+    ##############################################################################################################
+    ## Inserts a submenu Comments to ISE's Custum Menu
+    ## Inserts command Block Comment Selected to submenu Comments
+    ## Inserts command Block Uncomment Selected to submenu Comments
+    ## Inserts command Comment Selected to submenu Comments
+    ## Inserts command Uncomment Selected to submenu Comments
+    ##############################################################################################################
+    if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Comments" } ) )
+    {
+	    $commentsMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Comments",$null,$null) 
+	    $null = $commentsMenu.Submenus.Add("Block Comment Selected", {ConvertTo-BlockComment}, "Ctrl+SHIFT+B")
+	    $null = $commentsMenu.Submenus.Add("Block Uncomment Selected", {ConvertTo-BlockUncomment}, "Ctrl+Alt+B")
+	    $null = $commentsMenu.Submenus.Add("Comment Selected", {ConvertTo-Comment}, "Ctrl+SHIFT+C")
+	    $null = $commentsMenu.Submenus.Add("Uncomment Selected", {ConvertTo-Uncomment}, "Ctrl+Alt+C")
+    }
+
+    # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
+    # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
+    # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
+    # Add-IseMenu -Name "Comments" @{            
+    #    "Block Comment Selected"  = {ConvertTo-BlockComment}| Add-Member NoteProperty order  1 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+B" -PassThru
+    #    "Block Uncomment Selected" = {ConvertTo-BlockUncomment}| Add-Member NoteProperty order  2 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+B" -PassThru
+    #    "Comment Selected" = {ConvertTo-Comment}| Add-Member NoteProperty order  3 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+C" -PassThru
+    #    "Uncomment Selected"  = {ConvertTo-Uncomment}| Add-Member NoteProperty order  4 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+C" -PassThru
+    #    }
+    #endregion ISE-Comments
+
 }
-
-function Set-PSWindowTitle
-{
-    [CmdletBinding()]
-    param
-    (
-        [ValidateNotNullOrEmpty()]
-        [String] 
-        $Title
-    )
-
-    $Host.UI.RawUI.WindowTitle = $Title
-}
-#endregion Shell-Commands
+#endregion ISE-Only
 
 #region Misc-Utility-Commands
 function Measure-Folder
@@ -1397,392 +1447,497 @@ function Update-AllModules
 }
 #endregion Misc-Utility-Commands
 
-#region ISE-Only
-if ($Host.Name -eq 'Windows PowerShell ISE Host')
+#region Profile-Commands
+function Import-CommandHistory
 {
-    function Get-ISEShortcut
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline=$true)]
+        [IO.FileInfo]
+        $Path = (Join-Path -Path $Home -ChildPath .ps_history)
+    )
+
+    Clear-History
+    $xmlHist = Import-Clixml -Path $Path
+    $count = 1
+    foreach ($entry in $xmlHist)
     {
-        [CmdletBinding()]
-        param(
-            [ValidateNotNullOrEmpty()]
-            [ValidateSet('Name','Value')]
-            [String] 
-            $SortBy = 'Value'
-    
-        )
-
-        $gps = $psISE.GetType().Assembly
-        $rm = New-Object System.Resources.ResourceManager GuiStrings,$gps 
-        $rm.GetResourceSet((Get-Culture),$True,$True) | Where Value -CMatch "(F\d)|(Shift\+)|(Alt\+)|(Ctrl\+)" | Sort-Object $SortBy | Format-Table -AutoSize -Wrap
-    }
-
-    function Reset-IseTab 
-    {
-         <#
-        .Synopsis
-           Moves open files to a new PowerShell tab
-        .Example
-           Reset-IseTab –Save { function Prompt {'>'}  }
-        #>
-        Param(
-            [switch]$SaveFiles,
-            [ScriptBlock]$InvokeInNewTab
-        )
- 
-        $Current = $psISE.CurrentPowerShellTab    
-        $FileList = @()
-            
-        $Current.Files | ForEach-Object {        
-            if ($SaveFiles -and (-not $_.IsSaved)) {
- 
-                Write-Verbose "Saving $($_.FullPath)"           
-                try {
-                    $_.Save()             
-                    $FileList  += $_     
-                } catch [System.Management.Automation.MethodInvocationException] {
-                    # Save will fail saying that you need to SaveAs because the 
-                    # file doesn't have a path.
-                    Write-Verbose "Saving $($_.FullPath) Failed"                           
-                }            
-            } elseif ($_.IsSaved) {            
-                $FileList  += $_
-            }
-        }
-                   
-        $NewTab = $psISE.PowerShellTabs.Add() 
-        $FileList | ForEach-Object { 
-            $NewTab.Files.Add($_.FullPath) | Out-Null
-            $Current.Files.Remove($_) 
-        }
- 
-        # If a code block was to be sent to the new tab, add it here. 
-        #  Think module loading or dot-sourcing something to put your environment
-        # correct for the specific debug session.
-        if ($InvokeInNewTab) {
-         
-            Write-Verbose "Will call this after the Tab Loads:`n $InvokeInNewTab"
-         
-            # Wait for the new tab to be ready to run more commands.
-            While (-not $NewTab.CanInvoke) {
-                Start-Sleep -Seconds 1
-            }
- 
-            $NewTab.Invoke($InvokeInNewTab)
-        }
- 
-        if ($Current.Files.Count -eq 0) {        
-            #Only remove the tab if all of the files closed.
-            $psISE.PowerShellTabs.Remove($Current)
-        }
-    }
-
-    #region ISE-Lines
-#requires -version 2.0
-## ISE-Lines module v 1.2
-##############################################################################################################
-## Provides Line cmdlets for working with ISE
-## Duplicate-Line - Duplicates current line
-## Conflate-Line - Conflates current and next line
-## MoveUp-Line - Moves current line up
-## MoveDown-Line - Moves current line down
-## Delete-TrailingBlanks - Deletes trailing blanks in the whole script
-##
-## Usage within ISE or Microsoft.PowershellISE_profile.ps1:
-## Import-Module ISE-Lines.psm1
-##
-##############################################################################################################
-## History:
-## 1.2 - Minor alterations to work with PowerShell 2.0 RTM and Documentation updates (Hardwick)
-##       Include Delete-BlankLines function (author Kriszio I believe)
-## 1.1 - Bugfix and remove line continuation character while joining for Conflate-Line function (Kriszio)
-## 1.0 - Initial release (Poetter)
-##############################################################################################################
-
-## Duplicate-Line
-##############################################################################################################
-## Duplicates current line
-##############################################################################################################
-function Duplicate-Line
-{
-    $editor = $psISE.CurrentFile.Editor
-    $caretLine = $editor.CaretLine
-    $caretColumn = $editor.CaretColumn
-    $text = $editor.Text.Split("`n")
-    $line = $text[$caretLine -1]
-    $newText = $text[0..($caretLine -1)]
-    $newText += $line
-    $newText += $text[$caretLine..($text.Count -1)]
-    $editor.Text = [String]::Join("`n", $newText)
-    $editor.SetCaretPosition($caretLine, $caretColumn)
-}
-
-## Conflate-Line
-##############################################################################################################
-## Conflates current and next line
-## v 1.1 fixed bug on last but one line and remove line continuation character while joining
-##############################################################################################################
-function Conflate-Line
-{
-    $editor = $psISE.CurrentFile.Editor
-    $caretLine = $editor.CaretLine
-    $caretColumn = $editor.CaretColumn
-    $text = $editor.Text.Split("`n")
-    if ( $caretLine -ne $text.Count )
-    {
-        $line = $text[$caretLine -1] + $text[$caretLine] -replace ("(``)?`r", "")
-        $newText = @()
-        if ( $caretLine -gt 1 )
-        {
-            $newText = $text[0..($caretLine -2)]
-        }
-        $newText += $line
-        if ( $caretLine -ne $text.Count - 1)
-        {
-            $newText += $text[($caretLine +1)..($text.Count -1)]
-        }
-        $editor.Text = [String]::Join("`n", $newText)
-        $editor.SetCaretPosition($caretLine, $caretColumn)
+        $entry.Id = $count
+        $count++
+        Add-History -InputObject $entry
     }
 }
 
-## MoveUp-Line
-##############################################################################################################
-## Moves current line up
-##############################################################################################################
-function MoveUp-Line
+function Load-Profile 
 {
-    $editor = $psISE.CurrentFile.Editor
-    $caretLine = $editor.CaretLine
-    if ( $caretLine -ne 1 )
-    {
-        $caretColumn = $editor.CaretColumn
-        $text = $editor.Text.Split("`n")
-        $line = $text[$caretLine -1]
-        $lineBefore = $text[$caretLine -2]
-        $newText = @()
-        if ( $caretLine -gt 2 )
-        {
-            $newText = $text[0..($caretLine -3)]
-        }
-        $newText += $line
-        $newText += $lineBefore
-        if ( $caretLine -ne $text.Count )
-        {
-            $newText += $text[$caretLine..($text.Count -1)]
-        }
-        $editor.Text = [String]::Join("`n", $newText)
-        $editor.SetCaretPosition($caretLine - 1, $caretColumn)
-    }
+    # Window-Title
+    Set-PSWindowTitle -Title Coding
+
+    # Path
+    Set-Location -Path 'C:\'
+
+    # Modules
+    Import-Module -Name PSReadline -Force -Global
+
+    # Aliases
+    New-Alias -Name ctc -Value ConvertTo-TitleCase -Force
+    New-Alias -Name clip -Value Set-Clipboard -Force
+    New-Alias -Name ch -Value Copy-Hostname -Force
+    New-Alias -Name hostname -Value Get-Hostname -Force
+    New-Alias -Name Set-Debug -Value Set-DebugPreference -Force
+    New-Alias -Name Set-Verbose -Value Set-VerbosePreference -Force
 }
 
-## MoveDown-Line
-##############################################################################################################
-## Moves current line down
-##############################################################################################################
-function MoveDown-Line
+function Prompt
 {
-    $editor = $psISE.CurrentFile.Editor
-    $caretLine = $editor.CaretLine
-    $caretColumn = $editor.CaretColumn
-    $text = $editor.Text.Split("`n")
-    if ( $caretLine -ne $text.Count )
+	# Color for seperator ' -|- '
+	$SeperatorColor = 'DarkGray'
+#	$SeperatorColor = Get-Random -Min 1 -Max 16
+	
+	# DateTime
+	Write-Host "$([DateTime]::Now.ToString("MM/dd HH:mm:ss"))" -NoNewline -ForegroundColor Gray
+	
+	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+	
+	# IsAdmin
+	$Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $Principal = [Security.Principal.WindowsPrincipal] $identity
+	
+	if (Test-Path variable:/PSDebugContext)
+	{
+		Write-Host '[DBG]' -ForegroundColor Yellow -NoNewline
+	} 
+	elseif ($principal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
     {
-        $line = $text[$caretLine -1]
-        $lineAfter = $text[$caretLine]
-        $newText = @()
-        if ( $caretLine -ne 1 )
-        {
-            $newText = $text[0..($caretLine -2)]
-        }
-        $newText += $lineAfter
-        $newText += $line
-        if ( $caretLine -lt $text.Count -1 )
-        {
-            $newText += $text[($caretLine +1)..($text.Count -1)]
-        }
-        $editor.Text = [String]::Join("`n", $newText)
-        $editor.SetCaretPosition($caretLine +1, $caretColumn)
-    }
+		Write-Host "[ADMIN]" -ForegroundColor Red -NoNewline
+	}
+	else
+	{
+		Write-Host "[NOADMIN]" -ForegroundColor Gray -NoNewline
+	}
+	
+	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+	
+	$currentDirectory = Get-Location
+	Write-Host ("History: {0:00}" -f ((Get-History).Count)) -ForegroundColor Gray #-NoNewline
+	
+#	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+	
+	# Current folder
+	Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
+	Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
+	Write-Host ("$('>' * ($NestedPromptLevel + 1))")
 }
 
-## Delete-TrailingBlanks
-##############################################################################################################
-## Deletes trailing blanks in the whole script
-##############################################################################################################
-function Delete-TrailingBlanks
+function Start-QLApps
 {
-    $editor = $psISE.CurrentFile.Editor
-    $caretLine = $editor.CaretLine
-    $newText = @()
-    foreach ( $line in $editor.Text.Split("`n") )
+    $taskbarFldr = Join-Path -Path $env:APPDATA -ChildPath 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar' -Resolve
+
+    $allLnks = Get-ChildItem -Path $taskbarFldr -Filter *.lnk -File
+
+    foreach ($link in $allLnks)
     {
-        $newText += $line -replace ("\s+$", "")
+        Write-Host ('Starting {0}' -f $link.BaseName)
+        Start-Process -FilePath $link.FullName
     }
-    $editor.Text = [String]::Join("`n", $newText)
-    $editor.SetCaretPosition($caretLine, 1)
+
+    Start-Sleep -Seconds 10
+    Exit 0
 }
+#endregion Profile-Commands
 
-## Delete-BlankLines
-##############################################################################################################
-## Deletes blank lines from the selected text
-##############################################################################################################
-function Delete-BlankLines
+#region Shell-Commands
+function ConvertTo-TitleCase
 {
-# Code from the ISECream Archive (http://psisecream.codeplex.com/), originally named Remove-IseEmptyLines
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string] 
+        $InputObject,
 
-    # Todo it would be nice to keep the caretposition, but I found no easy way
-    # of course you can split the string into an array of lines
-    $editor = $psISE.CurrentFile.Editor
-    #$caretLine = $editor.CaretLine
-    if ($editor.SelectedText)
+        [Switch] 
+        $PassThru
+    )
+
+    $retVal = ((Get-Culture).TextInfo.ToTitleCase($InputObject))
+
+    if ($PassThru.IsPresent)
     {
-        Write-Host 'selected'
-        $editor.InsertText(($editor.SelectedText -replace '(?m)\s*$', ''))
+        Write-Output $retVal
     }
     else
     {
-        $editor.Text = $editor.Text -replace '(?m)\s*$', ''
+        Set-Clipboard -Value $retVal
     }
-    $editor.SetCaretPosition(1, 1)
 }
 
-    ##############################################################################################################
-    ## Inserts a submenu Lines to ISE's Custum Menu
-    ## Inserts command Duplicate Line to submenu Lines
-    ## Inserts command Conflate Line Selected to submenu Lines
-    ## Inserts command Move Up Line to submenu Lines
-    ## Inserts command Move Down Line to submenu Lines
-    ## Inserts command Delete Trailing Blanks to submenu Lines
-    ## Inserts command Delete Blank Lines to submenu Lines
-    ##############################################################################################################
-    if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Lines" } ) )
+function Copy-Hostname
+{
+    [CmdletBinding()]
+    param (
+	    [switch]$Short		= $true,
+	    [switch]$Domain		= $false,
+	    [switch]$FQDN		= $false
+    )
+
+    $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
+    if ( $FQDN ) {
+	    Set-Clipboard ("{0}.{1}" -f $ipProperties.HostName.ToUpper(), $ipProperties.DomainName)
+    }
+    if ( $Domain ) {
+	    Set-Clipboard ($ipProperties.DomainName.ToLower())
+    }
+    if ( $Short ) {
+	    Set-Clipboard ($ipProperties.HostName.ToUpper())
+    }
+}
+
+function Export-CommandHistory 
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline=$true)]
+        [IO.FileInfo]
+        $Path = (Join-Path -Path $Home -ChildPath .ps_history)
+    )
+
+    $fullHistory = [Object[]] @()
+
+    if (Test-Path -Path $Path)
     {
-	    $linesMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Lines",$null,$null) 
-	    $null = $linesMenu.Submenus.Add("Duplicate Line", {Duplicate-Line}, "Ctrl+Alt+D")
-	    $null = $linesMenu.Submenus.Add("Conflate Line", {Conflate-Line}, "Ctrl+Alt+J")
-	    $null = $linesMenu.Submenus.Add("Move Up Line", {MoveUp-Line}, "Ctrl+Shift+Up")
-	    $null = $linesMenu.Submenus.Add("Move Down Line", {MoveDown-Line}, "Ctrl+Shift+Down")
-	    $null = $linesMenu.Submenus.Add("Delete Trailing Blanks", {Delete-TrailingBlanks}, "Ctrl+Shift+Del")
-	    $null = $linesMenu.Submenus.Add("Delete Blank Lines", {Delete-BlankLines}, "Ctrl+Shift+Ins")
+        $fullHistory += Import-Clixml -Path $Path
     }
 
-    # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
-    # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
-    # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
-    # Add-IseMenu -Name "Lines" @{            
-    #    "Duplicate Line"  = {Duplicate-Line}| Add-Member NoteProperty order  1 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+D" -PassThru
-    #    "Conflate Line" = {Conflate-Line}| Add-Member NoteProperty order  2 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+J" -PassThru
-    #    "Move Up Line" = {MoveUp-Line}| Add-Member NoteProperty order  3 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Up" -PassThru
-    #    "Move Down Line"   = {MoveDown-Line}| Add-Member NoteProperty order  4 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Down" -PassThru
-    #    "Delete Trailing Blanks" = {Delete-TrailingBlanks}| Add-Member NoteProperty order  5 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Del" -PassThru
-    #    "Delete Blank Lines" = {Delete-BlankLines} | Add-Member NoteProperty order  6 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+End" -PassThru
-    #    }
-    #endregion ISE-Lines
+    $fullHistory += Get-History
 
-    #region ISE-Comments
-    #requires -version 2.0
-    ## ISE-Comments module v 1.1
-    ##############################################################################################################
-    ## Provides Comment cmdlets for working with ISE
-    ## ConvertTo-BlockComment - Comments out selected text with <# before and #> after
-    ## ConvertTo-BlockUncomment - Removes <# before and #> after selected text
-    ## ConvertTo-Comment - Comments out selected text with a leeding # on every line 
-    ## ConvertTo-Uncomment - Removes leeding # on every line of selected text
-    ##
-    ## Usage within ISE or Microsoft.PowershellISE_profile.ps1:
-    ## Import-Module ISE-Comments.psm1
-    ##
-    ## Note: The IsePack, a part of the PowerShellPack, also contains a "Toggle Comments" command,
-    ##       but it does not support Block Comments
-    ##       http://code.msdn.microsoft.com/PowerShellPack
-    ##
-    ##############################################################################################################
-    ## History:
-    ## 1.1 - Minor alterations to work with PowerShell 2.0 RTM and Documentation updates (Hardwick)
-    ## 1.0 - Initial release (Poetter)
-    ##############################################################################################################
-
-
-    ## ConvertTo-BlockComment
-    ##############################################################################################################
-    ## Comments out selected text with <# before and #> after
-    ## This code was originaly designed by Jeffrey Snover and was taken from the Windows PowerShell Blog.
-    ## The original function was named ConvertTo-Comment but as it comments out a block I renamed it.
-    ##############################################################################################################
-    function ConvertTo-BlockComment
-    {
-        $editor = $psISE.CurrentFile.Editor
-        $CommentedText = "<#`n" + $editor.SelectedText + "#>"
-        # INSERTING overwrites the SELECTED text
-        $editor.InsertText($CommentedText)
-    }
-
-    ## ConvertTo-BlockUncomment
-    ##############################################################################################################
-    ## Removes <# before and #> after selected text
-    ##############################################################################################################
-    function ConvertTo-BlockUncomment
-    {
-        $editor = $psISE.CurrentFile.Editor
-        $CommentedText = $editor.SelectedText -replace ("^<#`n", "")
-        $CommentedText = $CommentedText -replace ("#>$", "")
-        # INSERTING overwrites the SELECTED text
-        $editor.InsertText($CommentedText)
-    }
-
-    ## ConvertTo-Comment
-    ##############################################################################################################
-    ## Comments out selected text with a leeding # on every line
-    ##############################################################################################################
-    function ConvertTo-Comment
-    {
-        $editor = $psISE.CurrentFile.Editor
-        $CommentedText = $editor.SelectedText.Split("`n")
-        # INSERTING overwrites the SELECTED text
-        $editor.InsertText( "#" + ( [String]::Join("`n#", $CommentedText)))
-    }
-
-    ## ConvertTo-Uncomment
-    ##############################################################################################################
-    ## Comments out selected text with <# before and #> after
-    ##############################################################################################################
-    function ConvertTo-Uncomment
-    {
-        $editor = $psISE.CurrentFile.Editor
-        $CommentedText = $editor.SelectedText.Split("`n") -replace ( "^#", "" )
-        # INSERTING overwrites the SELECTED text
-        $editor.InsertText( [String]::Join("`n", $CommentedText))
-    }
-
-    ##############################################################################################################
-    ## Inserts a submenu Comments to ISE's Custum Menu
-    ## Inserts command Block Comment Selected to submenu Comments
-    ## Inserts command Block Uncomment Selected to submenu Comments
-    ## Inserts command Comment Selected to submenu Comments
-    ## Inserts command Uncomment Selected to submenu Comments
-    ##############################################################################################################
-    if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Comments" } ) )
-    {
-	    $commentsMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Comments",$null,$null) 
-	    $null = $commentsMenu.Submenus.Add("Block Comment Selected", {ConvertTo-BlockComment}, "Ctrl+SHIFT+B")
-	    $null = $commentsMenu.Submenus.Add("Block Uncomment Selected", {ConvertTo-BlockUncomment}, "Ctrl+Alt+B")
-	    $null = $commentsMenu.Submenus.Add("Comment Selected", {ConvertTo-Comment}, "Ctrl+SHIFT+C")
-	    $null = $commentsMenu.Submenus.Add("Uncomment Selected", {ConvertTo-Uncomment}, "Ctrl+Alt+C")
-    }
-
-    # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
-    # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
-    # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
-    # Add-IseMenu -Name "Comments" @{            
-    #    "Block Comment Selected"  = {ConvertTo-BlockComment}| Add-Member NoteProperty order  1 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+B" -PassThru
-    #    "Block Uncomment Selected" = {ConvertTo-BlockUncomment}| Add-Member NoteProperty order  2 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+B" -PassThru
-    #    "Comment Selected" = {ConvertTo-Comment}| Add-Member NoteProperty order  3 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+C" -PassThru
-    #    "Uncomment Selected"  = {ConvertTo-Uncomment}| Add-Member NoteProperty order  4 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+C" -PassThru
-    #    }
-    #endregion ISE-Comments
+    $fullHistory | Sort-Object -Property StartExecutionTime | Select-Object -Unique| Export-Clixml -Path $Path -Force
 
 }
-#endregion ISE-Only
+
+function Get-Hostname
+{
+    # .SYNOPSIS
+    #	Print the hostname of the system.
+    # .DESCRIPTION
+    #	This function prints the hostname of the system. You can additionally output the DNS
+    #	domain or the FQDN by using the parameters as described below.
+    # .PARAMETER Short
+    #	(Default) Print only the computername, i.e. the same value as returned by $env:computername
+    # .PARAMETER Domain
+    #	If set, print only the DNS domain to which the system belongs. Overrides the Short parameter.
+    # .PARAMETER FQDN
+    #	If set, print the fully-qualified domain name (FQDN) of the system. Overrides the Domain parameter.
+
+    param (
+	    [switch]$Short		= $true,
+	    [switch]$Domain		= $false,
+	    [switch]$FQDN		= $false
+    )
+
+    $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
+    if ( $FQDN ) {
+	    return "{0}.{1}" -f $ipProperties.HostName, $ipProperties.DomainName
+    }
+    if ( $Domain ) {
+	    return $ipProperties.DomainName
+    }
+    if ( $Short ) {
+	    return $ipProperties.HostName
+    }
+}
+
+function Get-PerformanceHistory 
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [Int] 
+        $Count = 1,
+
+        [ValidateNotNullOrEmpty()]
+        [Int[]] 
+        $Id = @((Get-History -Count 1| Select Id).Id),
+
+        [Switch]
+        $PassThru
+    )
+
+    $Parser = [System.Management.Automation.PsParser]
+    function FormatTimeSpan($ts) 
+    {
+        if($ts.Minutes) {
+            if($ts.Hours) {
+                if($ts.Days) {
+                    return "{0:##}d {1:00}:{2:00}:{3:00}.{4:0000}" -f $ts.Days, $ts.Hours, $ts.Minutes, $ts.Seconds, $ts.Milliseconds
+                }
+
+                return "{0:##}:{1:00}:{2:00}.{3:0000}" -f $ts.Hours, $ts.Minutes, $ts.Seconds, $ts.Milliseconds
+            }
+
+            return "{0:##}:{1:00}.{2:0000}" -f $ts.Minutes, $ts.Seconds, $ts.Milliseconds
+        }
+        
+        return "{0:#0}.{1:0000}" -f $ts.Seconds, $ts.Milliseconds
+    }
+
+    # if there's only one id, then the count counts, otherwise we just use the ids
+    # ... basically:    { 1..$count | % { $id += $id[-1]-1 }  }
+    if($Id.Count -eq 1) { $Id = ($Id[0])..($Id[0]-($Count-1)) } 
+    
+    # so we can call it with just the IDs
+    $cmdHistory = Get-History -Id $Id
+    $measuredObjs = New-Object System.Collections.ArrayList
+    foreach ($cmdId in $cmdHistory)
+    {
+        $msr = $null           
+   
+        $tok = $Parser::Tokenize( $cmdId.CommandLine, [ref]$null )
+        if( ($tok[0].Type -eq "Number") -and 
+            ($tok[0].Content -le 1) -and 
+            ($tok[2].Type -eq "Number") -and 
+            ($tok[1].Content -eq "..") )
+        {
+            $Count = ([int]$tok[2].Content) - ([int]$tok[0].Content) + 1
+        }
+   
+        $com = @( $tok | Where-Object {$PSItem.Type -eq "Command"} | 
+                         ForEach-Object { Get-Command $PSItem.Content -ErrorAction Ignore } | 
+                         Where-Object { $PSItem.CommandType -eq "ExternalScript" } |
+                         ForEach-Object { $PSItem.Path } )
+
+        # If we actually got a script, measure it out
+        if($com.Count -gt 0){
+            $msr = Get-Content -path $com | Measure-Object -Line -Word -Character
+        } else {
+            $msr = Measure-Object -in $cmdId.CommandLine -Line -Word -Character
+        }
+        
+        $cmdType = $null
+
+        if ($com.Count -gt 0) 
+        {$cmdType = "Script"}
+        else
+        {$cmdType = "Command"}
+
+        [Void]$measuredObjs.Add( [PSCustomObject]@{
+            'Id'          = $cmdId.Id
+            'Duration'    = (FormatTimeSpan ($cmdId.EndExecutionTime - $cmdId.StartExecutionTime))
+            'Average'     = (FormatTimeSpan ([TimeSpan]::FromTicks( (($cmdId.EndExecutionTime - $cmdId.StartExecutionTime).Ticks / $Count) )))
+            'Lines'       = $msr.Lines
+            'Words'       = $msr.Words
+            'Chars'       = $msr.Characters
+            'Type'        = $cmdType
+            'Command'     = $cmdId.CommandLine
+            'StartTime'   = $cmdId.StartExecutionTime
+            'EndTime'     = $cmdId.EndExecutionTime
+        } )        
+    }
+    
+    # default formatting values
+    $avgColSize = 0; $durColSize = 0; $typeColSize = 0
+
+    # I have to figure out what the longest time string is to make it look its best
+    foreach ($mObj in $measuredObjs)
+    {
+        if ($avgColSize -lt $mObj.Average.Length) { $avgColSize = $mObj.Average.Length }
+        if ($durColSize -lt $mObj.Duration.Length) { $durColSize = $mObj.Duration.Length }
+        if ($typeColSize -lt $mObj.Type.Length) { $typeColSize = $mObj.Type.Length }
+
+    }
+
+    if($PassThru.IsPresent)
+    {
+        Write-Output $measuredObjs
+    }
+    else
+    {
+    $measuredObjs | `
+        Sort-Object Id | `
+        Format-Table Id,`
+                     @{l=("{0,-$durColSize}" -f "Duration");e={"{0:#.#,$durColSize}" -f $PSItem.Duration}},`
+                     @{l=("{0,-$avgColSize}" -f "Average");e={"{0:#.#,$avgColSize}" -f $PSItem.Average}},`
+                     Lines,`
+                     Words,`
+                     Chars,`
+                     @{l=("{0,-$typeColSize}" -f "Type");e={"{0:#.#,$typeColSize}" -f $PSItem.Type}},`
+                     Command `
+                     -AutoSize -Wrap
+    }
+}
+
+function Lock-WorkStation
+{
+	$signature = @"
+[DllImport("user32.dll", SetLastError = true)]
+public static extern bool LockWorkStation();
+"@
+
+	$LockWorkStation = Add-Type -memberDefinition $signature -name "Win32LockWorkStation" -namespace Win32Functions -passthru
+	$LockWorkStation::LockWorkStation() | Out-Null
+}
+
+function Set-PSWindowTitle
+{
+    [CmdletBinding()]
+    param
+    (
+        [ValidateNotNullOrEmpty()]
+        [String] 
+        $Title
+    )
+
+    $Host.UI.RawUI.WindowTitle = $Title
+}
+#endregion Shell-Commands
+
+#region Version-Commands
+function Get-VersionNumber
+{
+    [CmdletBinding()]
+    [OutputType([System.Version])]
+    param()
+
+    process
+    {
+        Write-Output ([System.Version] ("{0}.{1}.{2}.{3}" -f `
+            ($script:NvnMajor),`
+            ($script:NvnMinor),`
+            ($script:NvnBuild),`
+            ($script:NvnRevision)
+        ))
+    }
+}
+
+function New-VersionNumber
+{
+    [CmdletBinding(DefaultParameterSetName='NewVersion')]
+    [OutputType([System.Version])]
+
+    Param
+    (
+
+        [Parameter(ParameterSetName='NewVersion')]
+        [ValidateNotNullOrEmpty()]
+        # Current major version number
+        [int] $Major = $script:NvnMajor
+        ,
+        [Parameter(ParameterSetName='NewVersion')]
+        [ValidateNotNullOrEmpty()]
+        # Current minor version number
+        [int] $Minor = $script:NvnMinor
+        ,
+        [Parameter(ParameterSetName='NewVersion')]
+        [ValidateNotNullOrEmpty()]
+        # Current revision Number
+        [int] $Revision = $script:NvnRevision
+        ,
+        [Parameter(
+            Mandatory=$true,
+            ParameterSetName='IncrementVersion')]
+        [ValidateNotNullOrEmpty()]
+        # Current version Number
+        [Version] $Version
+        ,
+        [Parameter()]
+        # Increment major version number
+        [Switch] $IncrementMajor
+        ,
+        [Parameter()]
+        # Increment minor version number
+        [Switch] $IncrementMinor
+    )
+
+    PROCESS
+    {
+        $ReturnVersion = ([System.Version] '0.0.0.0')
+
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'NewVersion'
+            {
+                #region Update-Script-Variables
+                if ($Major -ne $script:NvnMajor)
+                {
+                    $script:NvnMajor = $Major
+                }
+
+                if ($Minor -ne $script:NvnMinor)
+                {
+                    $script:NvnMinor = $Minor
+                }
+
+                if ($Revision -ne $script:NvnRevision)
+                {
+                    $script:NvnRevision = $Revision
+                }
+
+                if ($IncrementMajor.IsPresent)
+                {
+                    $script:NvnMajor++
+                }
+
+                if ($IncrementMinor.IsPresent)
+                {
+                    $script:NvnMinor++
+                }        
+
+                $script:NvnRevision++        
+                #endregion Update-Script-Variables
+
+                #region Update-Version-Object
+                $ReturnVersion = ([System.Version] ("{0}.{1}.{2}.{3}" -f `
+                    ($script:NvnMajor),`
+                    ($script:NvnMinor),`
+                    ($script:NvnBuild),`
+                    ($script:NvnRevision)
+                ))
+                #endregion Update-Version-Object
+            }
+            'IncrementVersion'
+            {
+                #region Update-Script-Variables
+                $script:NvnMajor = $Version.Major
+                $script:NvnMinor = $Version.Minor
+                $script:NvnBuild = $Version.Build
+                $script:NvnRevision = $Version.Revision
+
+                if ($IncrementMajor.IsPresent)
+                {
+                    $script:NvnMajor++
+                }
+
+                if ($IncrementMinor.IsPresent)
+                {
+                    $script:NvnMinor++
+                }
+
+                $script:NvnRevision++
+                #endregion Update-Script-Variables
+
+                #region Update-Version-Object
+                $ReturnVersion = ([System.Version] ("{0}.{1}.{2}.{3}" -f `
+                    ($script:NvnMajor),`
+                    ($script:NvnMinor),`
+                    ($script:NvnBuild),`
+                    ($script:NvnRevision)
+                ))
+                #endregion Update-Version-Object
+            }
+        }
+
+        Write-Output ($ReturnVersion)
+    }
+}
+
+function Reset-VersionNumber
+{
+    [int]$script:NvnMajor = 1
+    [int]$script:NvnMinor = 0
+    [int]$script:NvnBuild = (Get-Date -Format 'yyMMdd')
+    [int]$script:NvnRevision = 0
+}
+#endregion Version-Commands
 #endregion Functions
 
 #region Execution
