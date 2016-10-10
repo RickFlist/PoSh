@@ -1,0 +1,17 @@
+New-ModuleManifest 
+            -Path PoSh-Development.psd1 
+            -FileList BuildCommand-OOB.txt PoSh-Development.psm1 PoSh-Development.psd1 
+            -ModuleList PoSh-Development.psm1 
+            -NestedModules PoSh-Development.psm1 
+            -Author theosomos@gmail.com 
+            -ClrVersion  
+            -CompanyName  
+            -Copyright (c) 2016. All rights reserved. 
+            -DefaultCommandPrefix  
+            -Description An undescribed module 
+            -ModuleVersion 2.1.161009.3 
+            -PowerShellHostVersion 5.0 
+            -PowerShellVersion 5.0  
+            -PrivateData  
+            -RequiredModules  
+            -FunctionsToExport Get-PsModuleFileList Get-VersionNumber New-PsModuleManifest New-VersionNumber Read-PsExportModuleList Reset-VersionNumber
