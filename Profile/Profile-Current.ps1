@@ -1384,7 +1384,7 @@ function Resolve-FullPath
     Because the `Path` isn't rooted, joins `Path` with the current directory (as returned by `Get-Location`), and returns the full path.  If the current directory is `C:\Projects\Carbon`, returns `C:\Bar`.
     #>
     [CmdletBinding()]
-    [OutputType([System.IO.DirectoryInfo])]
+    [OutputType([System.IO.DirectoryInfo],[System.IO.FileInfo])]
 
     param(
         [Parameter(Mandatory=$true)]
@@ -1397,10 +1397,10 @@ function Resolve-FullPath
 
     if( -not ( [System.IO.Path]::IsPathRooted($Path) ) )
     {
-        $Path = Join-Path (Get-Location) $Path
+        $Path = Join-Path -Path (Get-Location) -ChildPath $Path
     }
     
-    Write-Output ([System.IO.DirectoryInfo] ([IO.Path]::GetFullPath($Path)))
+    Write-Output (Get-Item -Path  ([IO.Path]::GetFullPath($Path)))
 }
 
 function Update-AllModules
@@ -1471,6 +1471,8 @@ function Load-Profile
 
     # Modules
     Import-Module -Name PSReadline -Force -Global
+    $chasePath = Join-Path -Path $PSScriptRoot -ChildPath 'Chase-Module.psm1' -Resolve
+    Import-Module -Name $chasePath
 
     # Aliases
     New-Alias -Name ctc -Value ConvertTo-TitleCase -Force
