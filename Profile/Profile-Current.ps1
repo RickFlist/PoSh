@@ -457,6 +457,98 @@ function Set-VerbosePreference
 }
 #endregion *-*Preference
 
+#region File-System
+function Export-DirectoryAcl
+{
+    [CmdletBinding()]
+    [OutputType()]
+
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [System.IO.DirectoryInfo]
+        # Folder structure to interrogate
+        $LiteralPath
+        ,
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [System.IO.FileInfo]
+        # File to write permissions to 
+        $OutputFile = (Join-Path -Path $env:SystemDrive -ChildPath ('ACL-[{0}]-[{1}].csv' -f $LiteralPath.Name,(Get-Date -Format 'yyyyMMdd-HHmmss')))
+    )
+
+    process
+    {
+        Write-Debug ('Output File Absolute Path: {0}' -f $OutputFile.FullName)
+
+        Write-Debug ('Getting ACLs on folder ''{0}''' -f $LiteralPath.FullName)
+        (Get-Acl -LiteralPath $LiteralPath.FullName | Select-Object @{N="Path"; E={Convert-Path $PSItem.Path}} -ExpandProperty Access) | Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Force
+        
+        $subFolders = Get-ChildItem -Path $LiteralPath.FullName -Recurse -Directory
+        foreach ($fldr in $subFolders)
+        {
+            Write-Debug ('Getting ACLs on folder ''{0}''' -f $fldr.FullName)
+            $fldr | `
+                Get-Acl | `
+                Where-Object {$PSItem.IsInherited -eq $false} | `
+                Select-Object @{N="Path"; E={Convert-Path $PSItem.Path}} -ExpandProperty Access | `
+                Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Append
+        }
+    }
+}
+
+function Export-ShareAcl
+{
+    [CmdletBinding()]
+    [OutputType()]
+
+    param
+    (
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [System.IO.FileInfo]
+        # File to write permissions to 
+        $OutputFile = (Join-Path -Path $env:SystemDrive -ChildPath ('Share-[{0}]-[{1}].csv' -f $env:COMPUTERNAME.ToUpper(),(Get-Date -Format 'yyyyMMdd-HHmmss')))
+    )
+
+    process
+    {
+        Import-Module SmbShare -Force -ErrorAction Stop
+        $allShares = Get-SmbShare | Where-Object {$PSItem.Special -eq $false}
+
+        foreach ($share in $allShares)
+        {
+            Write-Debug ('Current Share: ''{0}'' (Local Path: ''{1}'')' -f $share.Name,$share.Path)
+            $authRules = $share.PresetPathAcl.GetAccessRules($true,$true,[System.Security.Principal.NTAccount])
+            $accessString = New-Object System.Text.StringBuilder
+            foreach ($rule in $authRules)
+            {
+                $tempString = ('{0};{1};{2}' -f $rule.IdentityReference,$rule.AccessControlType,$rule.FileSystemRights)
+
+                if ($accessString.Length -eq 0)
+                {
+                    $accessString.Append($tempString) | Out-Null
+                }
+                else
+                {
+                    $accessString.Append((':{0}' -f $tempString)) | Out-Null
+                }
+            }
+
+            $retVal = [PSCustomObject] @{
+                Name = $share.Name
+                LocalPath = $share.Path
+                Access = $accessString
+                SddlString = $share.SecurityDescriptor
+            }
+
+            $retVal | Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Append
+        }
+    }
+}
+#endregion File-System
+
 #region ISE-Only
 if ($Host.Name -eq 'Windows PowerShell ISE Host')
 {
@@ -1461,6 +1553,18 @@ function Import-CommandHistory
     }
 }
 
+function Import-MdpModules
+{
+	[CmdletBinding()]
+	[OutputType()]
+	param()
+	
+	process
+	{
+		Get-ChildItem -Path D:\Source\MDP-DevOps\PowerShell\ -Directory -Filter MDP* | %{Import-Module $PSItem.FullName -Force}
+	}
+}
+
 function Load-Profile 
 {
     # Window-Title
@@ -1490,9 +1594,9 @@ function Prompt
 #	$SeperatorColor = Get-Random -Min 1 -Max 16
 	
 	# DateTime
-	Write-Host "$([DateTime]::Now.ToString("MM/dd HH:mm:ss"))" -NoNewline -ForegroundColor Gray
+	Microsoft.PowerShell.Utility\Write-Host "$([DateTime]::Now.ToString("MM/dd HH:mm:ss"))" -NoNewline -ForegroundColor Gray
 	
-	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+	Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
 	
 	# IsAdmin
 	$Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -1500,28 +1604,28 @@ function Prompt
 	
 	if (Test-Path variable:/PSDebugContext)
 	{
-		Write-Host '[DBG]' -ForegroundColor Yellow -NoNewline
+		Microsoft.PowerShell.Utility\Write-Host '[DBG]' -ForegroundColor Yellow -NoNewline
 	} 
 	elseif ($principal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
     {
-		Write-Host "[ADMIN]" -ForegroundColor Red -NoNewline
+		Microsoft.PowerShell.Utility\Write-Host "[ADMIN]" -ForegroundColor Red -NoNewline
 	}
 	else
 	{
-		Write-Host "[NOADMIN]" -ForegroundColor Gray -NoNewline
+		Microsoft.PowerShell.Utility\Write-Host "[NOADMIN]" -ForegroundColor Gray -NoNewline
 	}
 	
-	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+	Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
 	
 	$currentDirectory = Get-Location
-	Write-Host ("History: {0:00}" -f ((Get-History).Count)) -ForegroundColor Gray #-NoNewline
+	Microsoft.PowerShell.Utility\Write-Host ("History: {0:00}" -f ((Get-History).Count)) -ForegroundColor Gray #-NoNewline
 	
-#	Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
+#	Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
 	
 	# Current folder
-	Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
-	Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
-	Write-Host ("$('>' * ($NestedPromptLevel + 1))")
+	Microsoft.PowerShell.Utility\Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
+	Microsoft.PowerShell.Utility\Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
+	Microsoft.PowerShell.Utility\Write-Host ("$('>' * ($NestedPromptLevel + 1))")
 }
 
 function Start-QLApps
@@ -1552,18 +1656,19 @@ function ConvertTo-TitleCase
         $InputObject,
 
         [Switch] 
-        $PassThru
+        $ToClipboard
     )
 
-    $retVal = ((Get-Culture).TextInfo.ToTitleCase($InputObject))
+    $retVal = ((Get-Culture).TextInfo.ToTitleCase($InputObject.ToLower()))
 
-    if ($PassThru.IsPresent)
+    if ($ToClipboard.IsPresent)
     {
+        Set-Clipboard -Value $retVal
         Write-Output $retVal
     }
     else
     {
-        Set-Clipboard -Value $retVal
+        Write-Output $retVal
     }
 }
 
@@ -1786,6 +1891,36 @@ function Set-PSWindowTitle
 }
 #endregion Shell-Commands
 
+#region Misc-Commands-All
+function Get-TimeSinceStartDate
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [Switch] 
+        $AsTimeSpan
+    )
+
+    process
+    {
+        $startDate = (Get-Date -Date "12/12/2016 9:45 AM")
+        $contractLength = 18
+        $elapsedTime = ((Get-Date).Subtract($StartDate))
+        $timeLeft = ($StartDate.AddMonths($contractLength).Subtract((Get-Date)))
+
+        if ($AsTimeSpan.IsPresent)
+        {
+            Write-Output ($ElapsedTime)
+        }
+        else
+        {
+            Write-Output ('{0:000} days, {1:00} hours, {2:00} minutes, {3:00} seconds, {4:0000} milliseconds elapsed' -f $ElapsedTime.Days,$ElapsedTime.Hours,$ElapsedTime.Minutes,$ElapsedTime.Seconds,$ElapsedTime.Milliseconds)
+            Write-Output ('{0:000} days, {1:00} hours, {2:00} minutes, {3:00} seconds, {4:0000} milliseconds remaining' -f $timeLeft.Days,$timeLeft.Hours,$timeLeft.Minutes,$timeLeft.Seconds,$timeLeft.Milliseconds)
+        }
+    }
+}
+#endregion Misc-Commands-All
 #endregion Functions
 
 #region Execution
@@ -1796,7 +1931,9 @@ $HistoryFilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) .ps_h
 Register-EngineEvent PowerShell.Exiting -Action { Export-CommandHistory -Path $HistoryFilePath  } | Out-Null
 if (Test-path $HistoryFilePath) { Import-CommandHistory -Path $HistoryFilePath}
 
-Set-DebugPreference -Preference Continue
-Set-VerbosePreference -Preference Continue
+#Set-DebugPreference -Preference Continue
+#Set-VerbosePreference -Preference Continue
 Set-InformationPreference -Preference Continue
+
+Import-MdpModules
 #endregion Execution
