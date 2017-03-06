@@ -36,4 +36,4 @@ $Global:SyncedProfilePath = ([System.IO.FileInfo] (Join-Path -Path (Get-OneDrive
 . $($Global:SyncedProfilePath.FullName)
 #>
 
-. "C:\Development\Source\PoSh\Profile\Profile-Current.ps1"
+. "D:\src\PoSh\Profile\Profile-Current.ps1"
