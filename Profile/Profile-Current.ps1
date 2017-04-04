@@ -1598,11 +1598,18 @@ function Import-MdpModules
 {
      [CmdletBinding()]
      [OutputType()]
-     param()
+     param
+     (
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [System.IO.DirectoryInfo]
+        # The path containing the MDP PowerShell modules
+        $LiteralPath = 'D:\src\MDP-DevOps'
+     )
 	
      process
      {
-          Get-ChildItem -Path D:\src\MDP-DevOps\PowerShell\ -Directory -Filter MDP* | ForEach-Object {Import-Module $PSItem.FullName -Force -DisableNameChecking -Global}
+          Get-ChildItem -LiteralPath (Join-Path -Path $LiteralPath -ChildPath 'PowerShell')  -Directory -Filter MDP* | ForEach-Object {Import-Module $PSItem.FullName -Force -DisableNameChecking -Global}
      }
 }
 
