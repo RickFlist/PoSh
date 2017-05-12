@@ -1319,7 +1319,7 @@ function New-RandomPassword
                ParameterSetName='RandomLength')]
           [ValidateScript({$_ -gt 0})]
           [Alias('Min')] 
-          [int]$MinPasswordLength = 8,
+          [int]$MinPasswordLength = 15,
         
           # Specifies maximum password length
           [Parameter(Mandatory=$false,
@@ -1334,17 +1334,17 @@ function New-RandomPassword
                          Throw 'Max value cannot be lesser than min value.'
                     }})]
           [Alias('Max')]
-          [int]$MaxPasswordLength = 12,
+          [int]$MaxPasswordLength = 25,
 
           # Specifies a fixed password length
           [Parameter(Mandatory=$false,
                ParameterSetName='FixedLength')]
           [ValidateRange(1,2147483647)]
-          [int]$PasswordLength = 8,
+          [int]$PasswordLength = 15,
         
           # Specifies an array of strings containing charactergroups from which the password will be generated.
           # At least one char from each group (string) will be used.
-          [String[]]$InputStrings = @('abcdefghijkmnpqrstuvwxyz', 'ABCEFGHJKLMNPQRSTUVWXYZ', '23456789', '!"#%&@'),
+          [String[]]$InputStrings = @('abcdefghijkmnpqrstuvwxyz', 'ABCEFGHJKLMNPQRSTUVWXYZ', '123456789', '!#%&@'),
 
           # Specifies a string containing a character group from which the first character in the password will be generated.
           # Useful for systems which requires first char in password to be alphabetic.
