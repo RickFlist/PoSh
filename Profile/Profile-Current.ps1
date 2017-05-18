@@ -1935,5 +1935,5 @@ if (Test-path $HistoryFilePath) { Import-CommandHistory -Path $HistoryFilePath}
 #Set-VerbosePreference -Preference Continue
 Set-InformationPreference -Preference Continue
 
-Import-MdpModules
+#Import-MdpModules
 #endregion Execution
