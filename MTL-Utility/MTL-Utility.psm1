@@ -3,6 +3,7 @@
 
 #region Public-Functions
 #region *-EnvironmentPath
+
 function Get-EnvironmentPath
 {
      [CmdletBinding()]
@@ -12,19 +13,25 @@ function Get-EnvironmentPath
      (
           [Parameter()]
           [ValidateNotNullOrEmpty()]
+          [ValidateSet([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::Process,[System.EnvironmentVariableTarget]::User)]
           # Scopes to retrieve
-          [System.EnvironmentVariableTarget[]]$Scopes = ([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::User,[System.EnvironmentVariableTarget]::Process)
+          [System.EnvironmentVariableTarget[]]
+          $Scopes = ([System.EnvironmentVariableTarget]::Machine)
      )
 
      process
      {
+          $envVarName = 'PATH'
           $hTable = @{}
           foreach ($scope in $Scopes)
           {
-               $envPath = [String[]] @()
-               $envPath = ([System.Environment]::GetEnvironmentVariable('PATH',$scope))
+               $envPath = [String]::Empty
+               $envPath = ([System.Environment]::GetEnvironmentVariable($envVarName,$scope))
                if ($envPath.Count -gt 0)
                {
+                    $msg = ('Getting PATH variable for ''{0}''' -f $scope)
+                    Write-Host $msg -ForegroundColor Green
+
                     $fmtdPath = New-Object -TypeName System.Collections.ArrayList
                     foreach ($path in $envPath.Split(';',[StringSplitOptions]::RemoveEmptyEntries))
                     {
@@ -35,14 +42,24 @@ function Get-EnvironmentPath
                     }
 
                     $newPath = ($fmtdPath | Select-Object -Unique | Sort-Object)
-
+                    ((($newPath | Out-String).Trim()) | Out-Host)
+                    Write-Host ('*' * 40 ) -ForegroundColor DarkGray
                     $hTable.Add($scope.ToString(),$newPath)
+                    Write-Host
+               }
+               else
+               {
+                    $msg = ('No ''{0}'' variabe set for scope ''{1}''' -f $envVarNaame,$scope)
+                    Write-Host ('*' * 40) -ForegroundColor Gray
+                    Write-Host ('No ''{0}'' variabe set for scope ''{1}''' -f $envVarName,$scope) -ForegroundColor Yellow
+                    $hTable.Add($scope.ToString(),[String]::Empty)
+                    Write-Host ('*' * 40) -ForegroundColor Gray
                }
           }
-
           return $hTable
      }
 }
+
 
 function Set-EnvironmentPath
 {
@@ -50,7 +67,13 @@ function Set-EnvironmentPath
 
      param
      (
-
+          [Parameter(Mandatory = $true,
+               ParameterSetName = 'HashTable')]
+          [ValidateNotNullOrEmpty()]
+          # Description
+          [hashtable]
+          $HashTable
+          ,
           [Parameter(
                Mandatory = $true,
                ParameterSetName = 'DirectoryInfo'
@@ -71,31 +94,77 @@ function Set-EnvironmentPath
           ,
           [Parameter()]
           [ValidateNotNullOrEmpty()]
+          [ValidateSet([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::Process,[System.EnvironmentVariableTarget]::User)]
           # Scopes to modify
           [System.EnvironmentVariableTarget[]]$Scopes = ([System.EnvironmentVariableTarget]::Machine)
      )
 
      process
      {
-          $newPath = [String]::Empty
-          switch ($PSCmdlet.ParameterSetName)
-          {
-               'DirectoryInfo'
-               {
-                    $newPath = (($Directory | foreach {$PSItem.FullName} | Select-Object -Unique| Sort-Object) -join ';')
-               }
-               'String'
-               {
-                    $newPath = (($String.Split(';') | Sort-Object) -join ';')
-               }
-          }
-
-          Write-Debug ('$newPath = {0}' -f $appendPath)
-
+          $envVarName = 'PATH'
           foreach ($scope in $Scopes)
           {
-               Write-Verbose ('Setting PATH for scope {0} to: {1}' -f $scope,$newPath)
-               [System.Environment]::SetEnvironmentVariable('PATH',$newPath,$scope)
+               # Hastable
+               if ($PSCmdlet.ParameterSetName -eq 'HashTable')
+               {
+                    Write-Host ('''Hashtable'' ParameterSet Detected')
+
+                    foreach ($hItem in $HashTable)
+                    {
+                         if ($hItem.ContainsKey($Scope.ToString()))
+                         {
+                              Write-Host ('Updating scope ''{0}'' with value(s):' -f $scope)
+                              $hItem.Item($scope.ToString()) | Out-Host
+                              [System.Environment]::SetEnvironmentVariable($envVarName,($hItem.Item($scope.ToString()) -join ';'),$scope)
+                              Write-Host ('Updated PATH: {0}' -f [Environment]::GetEnvironmentVariable($envVarName,$scope))
+                         }
+
+                    }
+               }
+               # DirectoryInfo
+               elseif ($PSCmdlet.ParameterSetName -eq 'DirectoryInfo')
+               {
+                    Write-Host ('''DirectoryInfo'' ParaeterSet Detected')
+                    $newPath = $Directory | ForEach-Object {$PSItem.FullName}
+                    $allDirs = New-Object -TypeName System.Collections.ArrayList
+                    foreach ($path in $newPath)
+                    {
+
+                         if (Test-Path -LiteralPath $path -PathType Container)
+                         {
+                              $allDirs.Add((ConvertTo-TitleCase -InputObject $path)) | Out-Null
+                         }
+                    }
+
+                    $newPath = ($allDirs | Select-Object -Unique | Sort-Object) -join ';'
+
+                    foreach ($path in $newPath)
+                    {
+                         Write-Host ('Updating scope ''{0}'' with value(s):' -f $scope)
+                         $path | Out-Host
+                         [System.Environment]::SetEnvironmentVariable($envVarName,($path -join ';'),$scope)
+                         Write-Host ('Updated PATH: {0}' -f [Environment]::GetEnvironmentVariable($envVarName,$scope))
+                    }
+               }
+               # String
+               elseif ($PSCmdlet.ParameterSetName -eq 'String')
+               {
+                    Write-Host ('''String'' ParameterSet Detected')
+                    if ($String.Contains(';'))
+                    {
+                         $allDirs = New-Object -TypeName System.Collections.ArrayList
+                         foreach ($path in $String.Split(';',[System.StringSplitOptions]::RemoveEmptyEntries))
+                         {
+                              if (Test-Path -LiteralPath $path -PathType Container)
+                              {
+                                   $allDirs.Add((ConvertTo-TitleCase -InputObject $path))
+                              }
+                         }
+                         $newPath = ($allDirs | Select-Object -Unique | Sort-Object) -join ';'
+
+                         [System.Environment]::SetEnvironmentVariable($envVarName,$newPath,$scope)
+                    }
+               }
           }
      }
 }
@@ -108,19 +177,21 @@ function Format-EnvironmentPath
      (
           [Parameter()]
           [ValidateNotNullOrEmpty()]
+          [ValidateSet([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::User,[System.EnvironmentVariableTarget]::Process)]
           # Scopes to modify
-          [System.EnvironmentVariableTarget[]]$Scopes = ([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::User,[System.EnvironmentVariableTarget]::Process)
+          [System.EnvironmentVariableTarget[]]$Scopes = [System.EnvironmentVariableTarget]::Machine
      )
 
      process
      {
           foreach ($scope in $Scopes)
           {
-               $currPath = (([System.Environment]::GetEnvironmentVariable('PATH',$scope)).Split(';') | foreach {([String] $PSItem.ToLower().Trim()) } | Select-Object -Unique | Sort-Object)
+               $envVarName = 'PATH'
+               $currPath = (([System.Environment]::GetEnvironmentVariable($envVarName,$scope)).Split(';') | ForEach-Object {ConvertTo-TitleCase -InputObject $PSItem } | Select-Object -Unique | Sort-Object)
                $newPath = New-Object System.Collections.ArrayList
 
-               Write-Debug ('Current PATH for scope {0}' -f $scope)
-               $currPath | Out-String | Write-Debug
+               Write-Host ('Current PATH for scope {0}' -f $scope)
+               $currPath | Out-String | Write-Host
 
                foreach ($path in $currPath)
                {
@@ -143,12 +214,13 @@ function Format-EnvironmentPath
                     }
                }
 
-               Write-Debug ('Updated PATH for scope {0}' -f $scope)
-               $newPath | Out-String | Write-Debug
+               Write-Host
+               Write-Host ('Updated PATH for scope {0}' -f $scope)
+               $newPath | Out-String | Out-Host
 
                Write-Verbose ('Setting PATH for scope {0}' -f $scope)
                $newPathStr = ($newPath -join ';')
-               [System.Environment]::SetEnvironmentVariable('PATH',$newPathStr,$scope)
+               [System.Environment]::SetEnvironmentVariable($envVarName,$newPathStr,$scope)
           }
      }
 }
@@ -173,12 +245,14 @@ function Update-EnvironmentPath
           )]
           [ValidateNotNullOrEmpty()]
           # String path to add
-          [String]$String
+          [String]
+          $String
           ,
           [Parameter()]
           [ValidateNotNullOrEmpty()]
+          [ValidateSet([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::User,[System.EnvironmentVariableTarget]::Process)]
           # Scopes to modify
-          [System.EnvironmentVariableTarget[]]$Scopes = ([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::User,[System.EnvironmentVariableTarget]::Process)
+          [System.EnvironmentVariableTarget[]]$Scopes = [System.EnvironmentVariableTarget]::Machine
      )
 
      process
@@ -188,7 +262,7 @@ function Update-EnvironmentPath
           {
                'DirectoryInfo'
                {
-                    $appendPath = ($Directory | foreach {(';{0}' -f $PSItem.FullName)})
+                    $appendPath = ($Directory | ForEach-Object {(';{0}' -f $PSItem.FullName)})
                }
                'String'
                {
@@ -200,11 +274,11 @@ function Update-EnvironmentPath
 
           foreach ($scope in $Scopes)
           {
-               $envPath = ([System.Environment]::GetEnvironmentVariable('PATH',$scope))
+               $envPath = ([System.Environment]::GetEnvironmentVariable($envVarName,$scope))
                $modPath = ('{0};{1}' -f $envPath,$appendPath)
 
                Write-Verbose ('Appending {0} to PATH for scope {1}' -f $appendPath,$scope)
-               [System.Environment]::SetEnvironmentVariable('PATH',$modPath,$scope)
+               [System.Environment]::SetEnvironmentVariable($envVarName,$modPath,$scope)
           }
      }
 
