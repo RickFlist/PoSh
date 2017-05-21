@@ -15,7 +15,7 @@ $Script:defPasswordKeyName = ([String] ('DefaultPassword'))
 function Disable-Autologin
 {
      New-ItemProperty -LiteralPath $rootRegPath -Name $autoLogonKeyName -Value $autoLoginDisabledValue -Force -PropertyType String
-} 
+}
 
 function Enable-Autologin
 {
@@ -23,7 +23,7 @@ function Enable-Autologin
 
      param
      (
-          [Parameter(Mandatory=$true)]
+          [Parameter(Mandatory = $true)]
           [ValidateNotNullOrEmpty()]
           # Default password
           [String]$DefaultPassword
@@ -32,7 +32,7 @@ function Enable-Autologin
           [ValidateNotNullOrEmpty()]
           # Default username
           [String]$DefaultUsername = ($env:USERNAME)
-          ,        
+          ,
           [Parameter()]
           [ValidateNotNullOrEmpty()]
           # Default domain to login to
@@ -46,7 +46,7 @@ function Enable-Autologin
           $defDomainValue = [String] (Get-ItemPropertyValue -LiteralPath $rootRegPath -Name $defDomainKeyName -ErrorAction SilentlyContinue)
           $defUsernameValue = [String] (Get-ItemPropertyValue -LiteralPath $rootRegPath -Name $defUsernameKeyName -ErrorAction SilentlyContinue)
 
-          #region Enable-Auto-Login        
+          #region Enable-Auto-Login
           if ($autoLoginValue)
           {
                Write-Verbose ('Current {0} value is: {1}' -f $autoLogonKeyName,$autoLoginValue)
@@ -137,10 +137,10 @@ function Get-Autologin
      }
 
      Write-Output ([PSCustomObject]@{
-               'Enabled' = $isEnabled
-               $autoLogonKeyName = $autoLoginValue
-               $defDomainKeyName = $defDomainValue
-               $defUsernameKeyName = $defUsernameValue
+               'Enabled'                  = $isEnabled
+               $autoLogonKeyName          = $autoLoginValue
+               $defDomainKeyName          = $defDomainValue
+               $defUsernameKeyName        = $defUsernameValue
                $Script:defPasswordKeyName = $defPasswordValue
           })
 }
@@ -236,10 +236,10 @@ function Get-EnvironmentPath
           foreach ($scope in $Scopes)
           {
                $envPath = (([System.Environment]::GetEnvironmentVariable('PATH',$scope)).Split(';') | Sort-Object)
-            
+
                Write-Output ([PSCustomObject]@{
                          'Scope' = $scope
-                         'PATH' = $envPath
+                         'PATH'  = $envPath
                     })
           }
      }
@@ -247,21 +247,21 @@ function Get-EnvironmentPath
 
 function Set-EnvironmentPath
 {
-     [CmdletBinding(DefaultParameterSetName='String')]
+     [CmdletBinding(DefaultParameterSetName = 'String')]
 
      param
      (
           [Parameter(
-               Mandatory=$true,
-               ParameterSetName='DirectoryInfo'
+               Mandatory = $true,
+               ParameterSetName = 'DirectoryInfo'
           )]
           [ValidateNotNullOrEmpty()]
           # Directory(s) to add
           [System.IO.DirectoryInfo[]]$Directory
           ,
           [Parameter(
-               Mandatory=$true,
-               ParameterSetName='String'
+               Mandatory = $true,
+               ParameterSetName = 'String'
           )]
           [ValidateNotNullOrEmpty()]
           # String path to add
@@ -287,11 +287,11 @@ function Set-EnvironmentPath
                     $newPath = (($String.Split(';') | Sort-Object) -join ';')
                }
           }
-        
+
           Write-Debug ('$newPath = {0}' -f $appendPath)
 
           foreach ($scope in $Scopes)
-          {            
+          {
                Write-Verbose ('Setting PATH for scope {0} to: {1}' -f $scope,$newPath)
                [System.Environment]::SetEnvironmentVariable('PATH',$newPath,$scope)
           }
@@ -300,7 +300,7 @@ function Set-EnvironmentPath
 
 function Format-EnvironmentPath
 {
-     [CmdletBinding(DefaultParameterSetName='String')]
+     [CmdletBinding(DefaultParameterSetName = 'String')]
 
      param
      (
@@ -353,21 +353,21 @@ function Format-EnvironmentPath
 
 function Update-EnvironmentPath
 {
-     [CmdletBinding(DefaultParameterSetName='String')]
+     [CmdletBinding(DefaultParameterSetName = 'String')]
 
      param
      (
           [Parameter(
-               Mandatory=$true,
-               ParameterSetName='DirectoryInfo'
+               Mandatory = $true,
+               ParameterSetName = 'DirectoryInfo'
           )]
           [ValidateNotNullOrEmpty()]
           # Directory(s) to add
           [System.IO.DirectoryInfo[]]$Directory
           ,
           [Parameter(
-               Mandatory=$true,
-               ParameterSetName='String'
+               Mandatory = $true,
+               ParameterSetName = 'String'
           )]
           [ValidateNotNullOrEmpty()]
           # String path to add
@@ -393,11 +393,11 @@ function Update-EnvironmentPath
                     $appendPath = $String
                }
           }
-        
+
           Write-Debug ('$appendPath = {0}' -f $appendPath)
 
           foreach ($scope in $Scopes)
-          {            
+          {
                $envPath = ([System.Environment]::GetEnvironmentVariable('PATH',$scope))
                $modPath = ('{0};{1}' -f $envPath,$appendPath)
 
@@ -415,7 +415,7 @@ function Set-DebugPreference
      [CmdletBinding()]
      param(
           [ValidateNotNullOrEmpty()]
-          [System.Management.Automation.ActionPreference] 
+          [System.Management.Automation.ActionPreference]
           $Preference
      )
 
@@ -436,7 +436,7 @@ function Set-InformationPreference
      [CmdletBinding()]
      param(
           [ValidateNotNullOrEmpty()]
-          [System.Management.Automation.ActionPreference] 
+          [System.Management.Automation.ActionPreference]
           $Preference
      )
 
@@ -449,7 +449,7 @@ function Set-VerbosePreference
      [CmdletBinding()]
      param(
           [ValidateNotNullOrEmpty()]
-          [System.Management.Automation.ActionPreference] 
+          [System.Management.Automation.ActionPreference]
           $Preference
      )
 
@@ -466,7 +466,7 @@ function Export-DirectoryAcl
 
      param
      (
-          [Parameter(Mandatory=$true)]
+          [Parameter(Mandatory = $true)]
           [ValidateNotNullOrEmpty()]
           [System.IO.DirectoryInfo]
           # Folder structure to interrogate
@@ -475,7 +475,7 @@ function Export-DirectoryAcl
           [Parameter()]
           [ValidateNotNullOrEmpty()]
           [System.IO.FileInfo]
-          # File to write permissions to 
+          # File to write permissions to
           $OutputFile = (Join-Path -Path $env:SystemDrive -ChildPath ('ACL-[{0}]-[{1}].csv' -f $LiteralPath.Name,(Get-Date -Format 'yyyyMMdd-HHmmss')))
      )
 
@@ -484,17 +484,17 @@ function Export-DirectoryAcl
           Write-Debug ('Output File Absolute Path: {0}' -f $OutputFile.FullName)
 
           Write-Debug ('Getting ACLs on folder ''{0}''' -f $LiteralPath.FullName)
-          (Get-Acl -LiteralPath $LiteralPath.FullName | Select-Object @{N="Path"; E={Convert-Path $PSItem.Path}} -ExpandProperty Access) | Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Force
-        
+          (Get-Acl -LiteralPath $LiteralPath.FullName | Select-Object @{N = "Path"; E = {Convert-Path $PSItem.Path}} -ExpandProperty Access) | Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Force
+
           $subFolders = Get-ChildItem -Path $LiteralPath.FullName -Recurse -Directory
           foreach ($fldr in $subFolders)
           {
                Write-Debug ('Getting ACLs on folder ''{0}''' -f $fldr.FullName)
                $fldr | `
-                Get-Acl | `
-                Where-Object {$PSItem.IsInherited -eq $false} | `
-                Select-Object @{N="Path"; E={Convert-Path $PSItem.Path}} -ExpandProperty Access | `
-                Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Append
+                    Get-Acl | `
+                    Where-Object {$PSItem.IsInherited -eq $false} | `
+                    Select-Object @{N = "Path"; E = {Convert-Path $PSItem.Path}} -ExpandProperty Access | `
+                    Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Append
           }
      }
 }
@@ -509,7 +509,7 @@ function Export-ShareAcl
           [Parameter()]
           [ValidateNotNullOrEmpty()]
           [System.IO.FileInfo]
-          # File to write permissions to 
+          # File to write permissions to
           $OutputFile = (Join-Path -Path $env:SystemDrive -ChildPath ('Share-[{0}]-[{1}].csv' -f $env:COMPUTERNAME.ToUpper(),(Get-Date -Format 'yyyyMMdd-HHmmss')))
      )
 
@@ -538,9 +538,9 @@ function Export-ShareAcl
                }
 
                $retVal = [PSCustomObject] @{
-                    Name = $share.Name
-                    LocalPath = $share.Path
-                    Access = $accessString
+                    Name       = $share.Name
+                    LocalPath  = $share.Path
+                    Access     = $accessString
                     SddlString = $share.SecurityDescriptor
                }
 
@@ -559,17 +559,17 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           param(
                [ValidateNotNullOrEmpty()]
                [ValidateSet('Name','Value')]
-               [String] 
+               [String]
                $SortBy = 'Value'
-    
+
           )
 
           $gps = $psISE.GetType().Assembly
-          $rm = New-Object System.Resources.ResourceManager GuiStrings,$gps 
+          $rm = New-Object System.Resources.ResourceManager GuiStrings,$gps
           $rm.GetResourceSet((Get-Culture),$True,$True) | Where Value -CMatch "(F\d)|(Shift\+)|(Alt\+)|(Ctrl\+)" | Sort-Object $SortBy | Format-Table -AutoSize -Wrap
      }
 
-     function Reset-IseTab 
+     function Reset-IseTab
      {
           <#
         .Synopsis
@@ -581,56 +581,57 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
                [switch]$SaveFiles,
                [ScriptBlock]$InvokeInNewTab
           )
- 
-          $Current = $psISE.CurrentPowerShellTab    
+
+          $Current = $psISE.CurrentPowerShellTab
           $FileList = @()
-            
-          $Current.Files | ForEach-Object {        
+
+          $Current.Files | ForEach-Object {
                if ($SaveFiles -and (-not $_.IsSaved))
                {
- 
-                    Write-Verbose "Saving $($_.FullPath)"           
+
+                    Write-Verbose "Saving $($_.FullPath)"
                     try
                     {
-                         $_.Save()             
-                         $FileList  += $_     
+                         $_.Save()
+                         $FileList += $_
                     } catch [System.Management.Automation.MethodInvocationException]
                     {
-                         # Save will fail saying that you need to SaveAs because the 
+                         # Save will fail saying that you need to SaveAs because the
                          # file doesn't have a path.
-                         Write-Verbose "Saving $($_.FullPath) Failed"                           
-                    }            
-               } elseif ($_.IsSaved)
-               {            
-                    $FileList  += $_
+                         Write-Verbose "Saving $($_.FullPath) Failed"
+                    }
+               }
+               elseif ($_.IsSaved)
+               {
+                    $FileList += $_
                }
           }
-                   
-          $NewTab = $psISE.PowerShellTabs.Add() 
-          $FileList | ForEach-Object { 
+
+          $NewTab = $psISE.PowerShellTabs.Add()
+          $FileList | ForEach-Object {
                $NewTab.Files.Add($_.FullPath) | Out-Null
-               $Current.Files.Remove($_) 
+               $Current.Files.Remove($_)
           }
- 
-          # If a code block was to be sent to the new tab, add it here. 
+
+          # If a code block was to be sent to the new tab, add it here.
           #  Think module loading or dot-sourcing something to put your environment
           # correct for the specific debug session.
           if ($InvokeInNewTab)
           {
-         
+
                Write-Verbose "Will call this after the Tab Loads:`n $InvokeInNewTab"
-         
+
                # Wait for the new tab to be ready to run more commands.
                While (-not $NewTab.CanInvoke)
                {
                     Start-Sleep -Seconds 1
                }
- 
+
                $NewTab.Invoke($InvokeInNewTab)
           }
- 
+
           if ($Current.Files.Count -eq 0)
-          {        
+          {
                #Only remove the tab if all of the files closed.
                $psISE.PowerShellTabs.Remove($Current)
           }
@@ -668,10 +669,10 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           $caretLine = $editor.CaretLine
           $caretColumn = $editor.CaretColumn
           $text = $editor.Text.Split("`n")
-          $line = $text[$caretLine -1]
-          $newText = $text[0..($caretLine -1)]
+          $line = $text[$caretLine - 1]
+          $newText = $text[0..($caretLine - 1)]
           $newText += $line
-          $newText += $text[$caretLine..($text.Count -1)]
+          $newText += $text[$caretLine..($text.Count - 1)]
           $editor.Text = [String]::Join("`n", $newText)
           $editor.SetCaretPosition($caretLine, $caretColumn)
      }
@@ -689,16 +690,16 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           $text = $editor.Text.Split("`n")
           if ( $caretLine -ne $text.Count )
           {
-               $line = $text[$caretLine -1] + $text[$caretLine] -replace ("(``)?`r", "")
+               $line = $text[$caretLine - 1] + $text[$caretLine] -replace ("(``)?`r", "")
                $newText = @()
                if ( $caretLine -gt 1 )
                {
-                    $newText = $text[0..($caretLine -2)]
+                    $newText = $text[0..($caretLine - 2)]
                }
                $newText += $line
                if ( $caretLine -ne $text.Count - 1)
                {
-                    $newText += $text[($caretLine +1)..($text.Count -1)]
+                    $newText += $text[($caretLine + 1)..($text.Count - 1)]
                }
                $editor.Text = [String]::Join("`n", $newText)
                $editor.SetCaretPosition($caretLine, $caretColumn)
@@ -717,18 +718,18 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           {
                $caretColumn = $editor.CaretColumn
                $text = $editor.Text.Split("`n")
-               $line = $text[$caretLine -1]
-               $lineBefore = $text[$caretLine -2]
+               $line = $text[$caretLine - 1]
+               $lineBefore = $text[$caretLine - 2]
                $newText = @()
                if ( $caretLine -gt 2 )
                {
-                    $newText = $text[0..($caretLine -3)]
+                    $newText = $text[0..($caretLine - 3)]
                }
                $newText += $line
                $newText += $lineBefore
                if ( $caretLine -ne $text.Count )
                {
-                    $newText += $text[$caretLine..($text.Count -1)]
+                    $newText += $text[$caretLine..($text.Count - 1)]
                }
                $editor.Text = [String]::Join("`n", $newText)
                $editor.SetCaretPosition($caretLine - 1, $caretColumn)
@@ -747,21 +748,21 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           $text = $editor.Text.Split("`n")
           if ( $caretLine -ne $text.Count )
           {
-               $line = $text[$caretLine -1]
+               $line = $text[$caretLine - 1]
                $lineAfter = $text[$caretLine]
                $newText = @()
                if ( $caretLine -ne 1 )
                {
-                    $newText = $text[0..($caretLine -2)]
+                    $newText = $text[0..($caretLine - 2)]
                }
                $newText += $lineAfter
                $newText += $line
-               if ( $caretLine -lt $text.Count -1 )
+               if ( $caretLine -lt $text.Count - 1 )
                {
-                    $newText += $text[($caretLine +1)..($text.Count -1)]
+                    $newText += $text[($caretLine + 1)..($text.Count - 1)]
                }
                $editor.Text = [String]::Join("`n", $newText)
-               $editor.SetCaretPosition($caretLine +1, $caretColumn)
+               $editor.SetCaretPosition($caretLine + 1, $caretColumn)
           }
      }
 
@@ -817,7 +818,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      ##############################################################################################################
      if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Lines" } ) )
      {
-          $linesMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Lines",$null,$null) 
+          $linesMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Lines",$null,$null)
           $null = $linesMenu.Submenus.Add("Duplicate Line", {Duplicate-Line}, "Ctrl+Alt+D")
           $null = $linesMenu.Submenus.Add("Conflate Line", {Conflate-Line}, "Ctrl+Alt+J")
           $null = $linesMenu.Submenus.Add("Move Up Line", {MoveUp-Line}, "Ctrl+Shift+Up")
@@ -829,7 +830,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
      # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
      # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
-     # Add-IseMenu -Name "Lines" @{            
+     # Add-IseMenu -Name "Lines" @{
      #    "Duplicate Line"  = {Duplicate-Line}| Add-Member NoteProperty order  1 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+D" -PassThru
      #    "Conflate Line" = {Conflate-Line}| Add-Member NoteProperty order  2 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+J" -PassThru
      #    "Move Up Line" = {MoveUp-Line}| Add-Member NoteProperty order  3 -PassThru | Add-Member NoteProperty ShortcutKey "Ctrl+Shift+Up" -PassThru
@@ -846,7 +847,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      ## Provides Comment cmdlets for working with ISE
      ## ConvertTo-BlockComment - Comments out selected text with <# before and #> after
      ## ConvertTo-BlockUncomment - Removes <# before and #> after selected text
-     ## ConvertTo-Comment - Comments out selected text with a leeding # on every line 
+     ## ConvertTo-Comment - Comments out selected text with a leeding # on every line
      ## ConvertTo-Uncomment - Removes leeding # on every line of selected text
      ##
      ## Usage within ISE or Microsoft.PowershellISE_profile.ps1:
@@ -923,7 +924,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      ##############################################################################################################
      if (-not( $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus | where { $_.DisplayName -eq "Comments" } ) )
      {
-          $commentsMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Comments",$null,$null) 
+          $commentsMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.SubMenus.Add("_Comments",$null,$null)
           $null = $commentsMenu.Submenus.Add("Block Comment Selected", {ConvertTo-BlockComment}, "Ctrl+SHIFT+B")
           $null = $commentsMenu.Submenus.Add("Block Uncomment Selected", {ConvertTo-BlockUncomment}, "Ctrl+Alt+B")
           $null = $commentsMenu.Submenus.Add("Comment Selected", {ConvertTo-Comment}, "Ctrl+SHIFT+C")
@@ -933,7 +934,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      # If you are using IsePack (http://code.msdn.microsoft.com/PowerShellPack) and IseCream (http://psisecream.codeplex.com/),
      # you can use this code to add your menu items. The added benefits are that you can specify the order of the menu items and
      # if the shortcut already exists it will add the menu item without the shortcut instead of failing as the default does.
-     # Add-IseMenu -Name "Comments" @{            
+     # Add-IseMenu -Name "Comments" @{
      #    "Block Comment Selected"  = {ConvertTo-BlockComment}| Add-Member NoteProperty order  1 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+B" -PassThru
      #    "Block Uncomment Selected" = {ConvertTo-BlockUncomment}| Add-Member NoteProperty order  2 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+Alt+B" -PassThru
      #    "Comment Selected" = {ConvertTo-Comment}| Add-Member NoteProperty order  3 -PassThru  | Add-Member NoteProperty ShortcutKey "Ctrl+SHIFT+C" -PassThru
@@ -966,15 +967,15 @@ function Measure-Folder
         The properties of the objects will be different based on which method is used, but
         the "TotalBytes" property is always populated if the directory size was successfully
         retrieved. Otherwise you should get a warning (and the sizes will be zero).
-    
+
         Online "blog" documentation: http://www.powershelladmin.com/wiki/Get_Folder_Size_with_PowerShell,_Blazingly_Fast
-    
+
         BSD 3-clause license. http://www.opensource.org/licenses/BSD-3-Clause
-    
+
         Copyright (C) 2015, Joakim Svendsen
         All rights reserved.
         Svendsen Tech.
-    
+
     .PARAMETER Path
         Path or paths to measure size of.
 
@@ -1011,27 +1012,27 @@ function Measure-Folder
 
      [CmdletBinding()]
      param(
-          [Parameter(Mandatory=$true,
-               ValueFromPipeline=$true,
-               ValueFromPipelineByPropertyName=$true)]
+          [Parameter(Mandatory = $true,
+               ValueFromPipeline = $true,
+               ValueFromPipelineByPropertyName = $true)]
           [string[]] $Path,
           [int] $Precision = 4,
           [switch] $RoboOnly,
           [switch] $ComOnly,
           [ValidateRange(1, 128)] [byte] $RoboThreadCount = 16)
 
-     begin 
+     begin
      {
-          if ($RoboOnly -and $ComOnly) 
+          if ($RoboOnly -and $ComOnly)
           {
                Write-Error -Message "You can't use both -ComOnly and -RoboOnly. Default is COM with a fallback to robocopy." -ErrorAction Stop
           }
-          if (-not $RoboOnly) 
+          if (-not $RoboOnly)
           {
                $FSO = New-Object -ComObject Scripting.FileSystemObject -ErrorAction Stop
           }
 
-          function Get-RoboFolderSizeInternal 
+          function Get-RoboFolderSizeInternal
           {
                [CmdletBinding()]
                param(
@@ -1067,14 +1068,14 @@ function Measure-Folder
                          {
                               $TimeElapsed = [math]::Round([decimal] ($EndedTime - $StartedTime).TotalSeconds, $Precision)
                               New-Object PSObject -Property @{
-                                   Path = $p
-                                   TotalBytes = [decimal] $Matches['ByteCount']
+                                   Path        = $p
+                                   TotalBytes  = [decimal] $Matches['ByteCount']
                                    TotalMBytes = [math]::Round(([decimal] $Matches['ByteCount'] / 1MB), $Precision)
                                    TotalGBytes = [math]::Round(([decimal] $Matches['ByteCount'] / 1GB), $Precision)
                                    BytesFailed = [decimal] $Matches['BytesFailed']
-                                   DirCount = [decimal] $Matches['DirCount']
-                                   FileCount = [decimal] $Matches['FileCount']
-                                   DirFailed = [decimal] $Matches['DirFailed']
+                                   DirCount    = [decimal] $Matches['DirCount']
+                                   FileCount   = [decimal] $Matches['FileCount']
+                                   DirFailed   = [decimal] $Matches['DirFailed']
                                    FileFailed  = [decimal] $Matches['FileFailed']
                                    TimeElapsed = $TimeElapsed
                                    StartedTime = $StartedTime
@@ -1093,25 +1094,25 @@ function Measure-Folder
 
      process
      {
-          foreach ($p in $Path) 
+          foreach ($p in $Path)
           {
                Write-Verbose -Message "Processing path '$p'. $([datetime]::Now)."
 
-               if (-not (Test-Path -Path $p -PathType Container)) 
+               if (-not (Test-Path -Path $p -PathType Container))
                {
                     Write-Warning -Message "$p does not exist or is a file and not a directory. Skipping."
                     continue
                }
 
                # We know we can't have -ComOnly here if we have -RoboOnly.
-               if ($RoboOnly) 
+               if ($RoboOnly)
                {
                     Get-RoboFolderSizeInternal -Path $p -Precision $Precision
                     continue
                }
 
                $ErrorActionPreference = 'Stop'
-               try 
+               try
                {
                     $StartFSOTime = [datetime]::Now
                     $TotalBytes = $FSO.GetFolder($p).Size
@@ -1129,7 +1130,7 @@ function Measure-Folder
                          }
                     }
                }
-               catch 
+               catch
                {
                     if ($_.Exception.Message -like '*PERMISSION*DENIED*')
                     {
@@ -1151,18 +1152,18 @@ function Measure-Folder
                $ErrorActionPreference = 'Continue'
 
                New-Object PSObject -Property @{
-                    Path = $p
-                    TotalBytes = [decimal] $TotalBytes
+                    Path        = $p
+                    TotalBytes  = [decimal] $TotalBytes
                     TotalMBytes = [math]::Round(([decimal] $TotalBytes / 1MB), $Precision)
                     TotalGBytes = [math]::Round(([decimal] $TotalBytes / 1GB), $Precision)
                     BytesFailed = $null
-                    DirCount = (@(Get-ChildItem -Path $p -Directory -Recurse).Count)
-                    FileCount = $null
-                    DirFailed = $null
+                    DirCount    = (@(Get-ChildItem -Path $p -Directory -Recurse).Count)
+                    FileCount   = $null
+                    DirFailed   = $null
                     FileFailed  = $null
                     TimeElapsed = [math]::Round(([decimal] ($EndFSOTime - $StartFSOTime).TotalSeconds), $Precision)
                     StartedTime = $StartFSOTime
-                    EndedTime = $EndFSOTime
+                    EndedTime   = $EndFSOTime
                } | Select Path, TotalBytes, TotalMBytes, TotalGBytes, DirCount, FileCount, DirFailed, FileFailed, TimeElapsed, StartedTime, EndedTime
           }
      }
@@ -1185,7 +1186,7 @@ function Measure-Latency
 
      param
      (
-          [Parameter(Mandatory=$true)]
+          [Parameter(Mandatory = $true)]
           [ValidateNotNullOrEmpty()]
           [String]
           # DNSor IP to measure latency to
@@ -1234,12 +1235,12 @@ function Measure-Latency
 
 function New-Folder
 {
-     [CmdletBinding(DefaultParameterSetName='FixedLength',ConfirmImpact='None')]
+     [CmdletBinding(DefaultParameterSetName = 'FixedLength',ConfirmImpact = 'None')]
      [OutputType([String])]
 
      param
      (
-          [Parameter(Mandatory=$true)]
+          [Parameter(Mandatory = $true)]
           [ValidateNotNullOrEmpty()]
           # Path of folder to create
           [String] $LiteralPath
@@ -1268,7 +1269,7 @@ function New-Folder
      }
 }
 
-function New-RandomPassword 
+function New-RandomPassword
 {
      <#
     .Synopsis
@@ -1297,7 +1298,7 @@ function New-RandomPassword
        New-SWRandomPassword -InputStrings abc, ABC, 123 -PasswordLength 4 -FirstChar abcdefghijkmnpqrstuvwxyzABCEFGHJKLMNPQRSTUVWXYZ
        3ABa
 
-       Generates a password with a length of 4 containing atleast one char from each InputString that will start with a letter from 
+       Generates a password with a length of 4 containing atleast one char from each InputString that will start with a letter from
        the string specified with the parameter FirstChar
     .OUTPUTS
        [String]
@@ -1308,24 +1309,24 @@ function New-RandomPassword
        Generates random passwords
     .LINK
        http://blog.simonw.se/powershell-generating-random-password-for-active-directory/
-   
+
     #>
-     [CmdletBinding(DefaultParameterSetName='FixedLength',ConfirmImpact='None')]
+     [CmdletBinding(DefaultParameterSetName = 'FixedLength',ConfirmImpact = 'None')]
      [OutputType([String])]
      Param
      (
           # Specifies minimum password length
-          [Parameter(Mandatory=$false,
-               ParameterSetName='RandomLength')]
-          [ValidateScript({$_ -gt 0})]
-          [Alias('Min')] 
+          [Parameter(Mandatory = $false,
+               ParameterSetName = 'RandomLength')]
+          [ValidateScript( {$_ -gt 0})]
+          [Alias('Min')]
           [int]$MinPasswordLength = 15,
-        
+
           # Specifies maximum password length
-          [Parameter(Mandatory=$false,
-               ParameterSetName='RandomLength')]
-          [ValidateScript({
-                    if($_ -ge $MinPasswordLength)
+          [Parameter(Mandatory = $false,
+               ParameterSetName = 'RandomLength')]
+          [ValidateScript( {
+                    if ($_ -ge $MinPasswordLength)
                     {
                          $true
                     }
@@ -1337,11 +1338,11 @@ function New-RandomPassword
           [int]$MaxPasswordLength = 25,
 
           # Specifies a fixed password length
-          [Parameter(Mandatory=$false,
-               ParameterSetName='FixedLength')]
+          [Parameter(Mandatory = $false,
+               ParameterSetName = 'FixedLength')]
           [ValidateRange(1,2147483647)]
           [int]$PasswordLength = 15,
-        
+
           # Specifies an array of strings containing charactergroups from which the password will be generated.
           # At least one char from each group (string) will be used.
           [String[]]$InputStrings = @('abcdefghijkmnpqrstuvwxyz', 'ABCEFGHJKLMNPQRSTUVWXYZ', '123456789', '!#%&@'),
@@ -1349,7 +1350,7 @@ function New-RandomPassword
           # Specifies a string containing a character group from which the first character in the password will be generated.
           # Useful for systems which requires first char in password to be alphabetic.
           [String] $FirstChar,
-        
+
           # Specifies number of passwords to generate.
           [ValidateRange(1,2147483647)]
           [int]$Count = 1
@@ -1369,7 +1370,7 @@ function New-RandomPassword
 
      Process
      {
-          For($iteration = 1;$iteration -le $Count; $iteration++)
+          For ($iteration = 1;$iteration -le $Count; $iteration++)
           {
                $Password = @{}
                # Create char arrays containing groups of possible chars
@@ -1379,9 +1380,9 @@ function New-RandomPassword
                $AllChars = $CharGroups | ForEach-Object {[Char[]]$_}
 
                # Set password length
-               if($PSCmdlet.ParameterSetName -eq 'RandomLength')
+               if ($PSCmdlet.ParameterSetName -eq 'RandomLength')
                {
-                    if($MinPasswordLength -eq $MaxPasswordLength)
+                    if ($MinPasswordLength -eq $MaxPasswordLength)
                     {
                          # If password length is set, use set length
                          $PasswordLength = $MinPasswordLength
@@ -1394,37 +1395,37 @@ function New-RandomPassword
                }
 
                # If FirstChar is defined, randomize first char in password from that string.
-               if($PSBoundParameters.ContainsKey('FirstChar'))
+               if ($PSBoundParameters.ContainsKey('FirstChar'))
                {
                     $Password.Add(0,$FirstChar[((Get-Seed) % $FirstChar.Length)])
                }
                # Randomize one char from each group
-               Foreach($Group in $CharGroups)
+               Foreach ($Group in $CharGroups)
                {
-                    if($Password.Count -lt $PasswordLength)
+                    if ($Password.Count -lt $PasswordLength)
                     {
                          $Index = Get-Seed
                          While ($Password.ContainsKey($Index))
                          {
-                              $Index = Get-Seed                        
+                              $Index = Get-Seed
                          }
                          $Password.Add($Index,$Group[((Get-Seed) % $Group.Count)])
                     }
                }
 
                # Fill out with chars from $AllChars
-               for($i=$Password.Count;$i -lt $PasswordLength;$i++)
+               for ($i = $Password.Count;$i -lt $PasswordLength;$i++)
                {
                     $Index = Get-Seed
                     While ($Password.ContainsKey($Index))
                     {
-                         $Index = Get-Seed                        
+                         $Index = Get-Seed
                     }
                     $Password.Add($Index,$AllChars[((Get-Seed) % $AllChars.Count)])
                }
-               Write-Output -InputObject $(-join ($Password.GetEnumerator() | Sort-Object -Property Name | Select-Object -ExpandProperty Value))
-      }
-  }
+               Write-Output -InputObject $( -join ($Password.GetEnumerator() | Sort-Object -Property Name | Select-Object -ExpandProperty Value))
+          }
+     }
 }
 
 function Resolve-Error
@@ -1436,10 +1437,10 @@ function Resolve-Error
     Displays detailed information about an error and its context
 
     #>
-    
+
      [CmdletBinding()]
      param(
-    
+
           ## The error to resolve
           $ErrorRecord = ($error[0])
 
@@ -1449,13 +1450,13 @@ function Resolve-Error
 
      $bannerColor = [System.ConsoleColor]::Gray
      $headerColor = [System.ConsoleColor]::Green
-     $lineWidth = ($Host.UI.RawUI.BufferSize.Width -1)
+     $lineWidth = ($Host.UI.RawUI.BufferSize.Width - 1)
 
      Write-Host
      Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
      Write-Host ('Error Details ($error[0] | Format-List * -Force)') -ForegroundColor $headerColor
      Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
-    
+
      ($errorRecord | Format-List * -Force | Out-String).Trim("`r`n")
 
      Write-Host
@@ -1473,7 +1474,7 @@ function Resolve-Error
           Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
           ($errorRecord.TargetObject | Format-List * | Out-String).Trim("`r`n")
      }
-    
+
      Write-Host
      Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
      Write-Host ('Exception Details ($error[0].Exception | Format-List * -Force)') -ForegroundColor $headerColor
@@ -1495,44 +1496,44 @@ function Resolve-FullPath
      <#
     .SYNOPSIS
     Converts a relative path to an absolute path.
-    
+
     .DESCRIPTION
     Unlike `Resolve-Path`, this function does not check whether the path exists.  It just converts relative paths to absolute paths.
-    
+
     Unrooted paths (e.g. `..\..\See\I\Do\Not\Have\A\Root`) are first joined with the current directory (as returned by `Get-Location`).
-    
+
     .EXAMPLE
     Resolve-FullPath -Path 'C:\Projects\Carbon\Test\..\Carbon\FileSystem.ps1'
-    
+
     Returns `C:\Projects\Carbon\Carbon\FileSystem.ps1`.
-    
+
     .EXAMPLE
     Resolve-FullPath -Path 'C:\Projects\Carbon\..\I\Do\Not\Exist'
-    
+
     Returns `C:\Projects\I\Do\Not\Exist`.
-    
+
     .EXAMPLE
     Resolve-FullPath -Path ..\..\Foo\..\Bar
-    
+
     Because the `Path` isn't rooted, joins `Path` with the current directory (as returned by `Get-Location`), and returns the full path.  If the current directory is `C:\Projects\Carbon`, returns `C:\Bar`.
     #>
      [CmdletBinding()]
      [OutputType([System.IO.DirectoryInfo],[System.IO.FileInfo])]
 
      param(
-          [Parameter(Mandatory=$true)]
+          [Parameter(Mandatory = $true)]
           [string]
           # The path to resolve.  Must be rooted, i.e. have a drive at the beginning.
           $Path
      )
-    
+
      Set-StrictMode -Version 'Latest'
 
-     if( -not ( [System.IO.Path]::IsPathRooted($Path) ) )
+     if ( -not ( [System.IO.Path]::IsPathRooted($Path) ) )
      {
           $Path = Join-Path -Path (Get-Location) -ChildPath $Path
      }
-    
+
      Write-Output (Get-Item -Path  ([IO.Path]::GetFullPath($Path)))
 }
 
@@ -1548,10 +1549,10 @@ function Restart-PowerShellAsAdmin
           # Get the ID and security principal of the current user account
           $myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
           $myWindowsPrincipal = new-object System.Security.Principal.WindowsPrincipal($myWindowsID)
-  
+
           # Get the security principal for the Administrator role
           $adminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
-  
+
           # Check to see if we are currently running "as Administrator"
           if ($myWindowsPrincipal.IsInRole($adminRole))
           {
@@ -1563,23 +1564,23 @@ function Restart-PowerShellAsAdmin
           else
           {
                # We are not running "as Administrator" - so relaunch as administrator
-    
+
                # Create a new process object that starts PowerShell
                $newProcess = new-object System.Diagnostics.ProcessStartInfo "PowerShell";
-    
+
                # Specify the current script path and name as a parameter
                $newProcess.Arguments = $myInvocation.MyCommand.Definition;
-    
+
                # Indicate that the process should be elevated
                $newProcess.Verb = "runas";
-    
+
                # Start the new process
                [System.Diagnostics.Process]::Start($newProcess);
-    
+
                # Exit from the current, unelevated, process
                exit
           }
-  
+
           # Run your code that needs to be elevated here
           Write-Host -NoNewLine "Press any key to continue..."
           $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -1592,7 +1593,7 @@ function Update-AllModules
 
      Write-Host ('Retrieving a list of all modules install on the system...')
      $allModules = (Get-Module -ListAvailable)
-    
+
      foreach ($mod in $allModules)
      {
           Write-Host ('Checking for updates to ') -NoNewline
@@ -1600,10 +1601,10 @@ function Update-AllModules
 
           $modFound = (Find-Module -Name $mod.Name -ErrorAction SilentlyContinue)
 
-          if($modFound)
+          if ($modFound)
           {
                Write-Host ('Found {0} in available galleries' -f $mod.Name)
-            
+
                if ($mod.Version -eq $modFound.Version)
                {
                     Write-Host ('No update required') -ForegroundColor Gray
@@ -1628,7 +1629,7 @@ function Import-CommandHistory
 {
      [CmdletBinding()]
      param(
-          [Parameter(ValueFromPipeline=$true)]
+          [Parameter(ValueFromPipeline = $true)]
           [IO.FileInfo]
           $Path = (Join-Path -Path $Home -ChildPath .ps_history)
      )
@@ -1650,21 +1651,24 @@ function Import-MdpModules
      [OutputType()]
      param
      (
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [System.IO.DirectoryInfo]
-        # The path containing the MDP PowerShell modules
-        $LiteralPath = 'D:\src\MDP-DevOps'
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          [System.IO.DirectoryInfo]
+          # The path containing the MDP PowerShell modules
+          $LiteralPath = 'D:\src\MDP-DevOps'
      )
-	
+
      process
      {
           Get-ChildItem -LiteralPath (Join-Path -Path $LiteralPath -ChildPath 'PowerShell')  -Directory -Filter MDP* | Sort-Object -Property Name | ForEach-Object {Import-Module $PSItem.FullName -Force -DisableNameChecking -Global}
      }
 }
 
-function Load-Profile 
+function Import-Profile
 {
+     # PowerTab
+     Import-Module "PowerTab" -ArgumentList "E:\Cloud-Providers\OneDrive\PowerShell\PowerTab\PowerTabConfig.xml"
+
      # Window-Title
      Set-PSWindowTitle -Title ('Coding - {0}' -f (Get-Date -Format 'G'))
 
@@ -1673,7 +1677,7 @@ function Load-Profile
 
      # Modules
      Import-Module -Name PSReadline -Force -Global
-    
+
      # Aliases
      New-Alias -Name ctc -Value ConvertTo-TitleCase -Force -Scope Global
      New-Alias -Name clip -Value Set-Clipboard -Force -Scope Global
@@ -1686,6 +1690,8 @@ function Load-Profile
      # CaptureScreen is good for blog posts or email showing a transaction
      # of what you did when asking for help or demonstrating a technique.
      Set-PSReadlineKeyHandler -Chord 'Ctrl+D,Ctrl+C' -Function CaptureScreen
+
+
 }
 
 function Prompt
@@ -1693,20 +1699,20 @@ function Prompt
      # Color for seperator ' -|- '
      $SeperatorColor = 'DarkGray'
      #	$SeperatorColor = Get-Random -Min 1 -Max 16
-	
+
      # DateTime
      Microsoft.PowerShell.Utility\Write-Host "$([DateTime]::Now.ToString("MM/dd HH:mm:ss"))" -NoNewline -ForegroundColor Gray
-	
+
      Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
+
      # IsAdmin
      $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
      $Principal = [Security.Principal.WindowsPrincipal] $identity
-	
+
      if (Test-Path variable:/PSDebugContext)
      {
           Microsoft.PowerShell.Utility\Write-Host '[DBG]' -ForegroundColor Yellow -NoNewline
-     } 
+     }
      elseif ($principal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
      {
           Microsoft.PowerShell.Utility\Write-Host "[ADMIN]" -ForegroundColor Red -NoNewline
@@ -1715,14 +1721,14 @@ function Prompt
      {
           Microsoft.PowerShell.Utility\Write-Host "[NOADMIN]" -ForegroundColor Gray -NoNewline
      }
-	
+
      Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
+
      $currentDirectory = Get-Location
      Microsoft.PowerShell.Utility\Write-Host ("History: {0:00}" -f ((Get-History).Count)) -ForegroundColor Gray #-NoNewline
-	
+
      #	Microsoft.PowerShell.Utility\Write-Host (" -|- ") -NoNewline -ForegroundColor $SeperatorColor
-	
+
      # Current folder
      Microsoft.PowerShell.Utility\Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
@@ -1751,12 +1757,12 @@ function ConvertTo-TitleCase
 {
      [CmdletBinding()]
      param(
-          [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+          [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
           [ValidateNotNullOrEmpty()]
-          [string] 
+          [string]
           $InputObject,
 
-          [Switch] 
+          [Switch]
           $ToClipboard
      )
 
@@ -1777,9 +1783,9 @@ function Copy-Hostname
 {
      [CmdletBinding()]
      param (
-          [switch]$Short		= $true,
-          [switch]$Domain		= $false,
-          [switch]$FQDN		= $false
+          [switch]$Short = $true,
+          [switch]$Domain = $false,
+          [switch]$FQDN = $false
      )
 
      $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
@@ -1797,11 +1803,11 @@ function Copy-Hostname
      }
 }
 
-function Export-CommandHistory 
+function Export-CommandHistory
 {
      [CmdletBinding()]
      param(
-          [Parameter(ValueFromPipeline=$true)]
+          [Parameter(ValueFromPipeline = $true)]
           [IO.FileInfo]
           $Path = (Join-Path -Path $Home -ChildPath .ps_history)
      )
@@ -1834,9 +1840,9 @@ function Get-Hostname
      #	If set, print the fully-qualified domain name (FQDN) of the system. Overrides the Domain parameter.
 
      param (
-          [switch]$Short		= $true,
-          [switch]$Domain		= $false,
-          [switch]$FQDN		= $false
+          [switch]$Short = $true,
+          [switch]$Domain = $false,
+          [switch]$FQDN = $false
      )
 
      $ipProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
@@ -1854,16 +1860,16 @@ function Get-Hostname
      }
 }
 
-function Get-PerformanceHistory 
+function Get-PerformanceHistory
 {
      [CmdletBinding()]
      param(
           [ValidateNotNullOrEmpty()]
-          [Int] 
+          [Int]
           $Count = 1,
 
           [ValidateNotNullOrEmpty()]
-          [Int[]] 
+          [Int[]]
           $Id = @((Get-History -Count 1| Select Id).Id),
 
           [Switch]
@@ -1871,13 +1877,13 @@ function Get-PerformanceHistory
      )
 
      $Parser = [System.Management.Automation.PsParser]
-     function FormatTimeSpan($ts) 
+     function FormatTimeSpan($ts)
      {
-          if($ts.Minutes)
+          if ($ts.Minutes)
           {
-               if($ts.Hours)
+               if ($ts.Hours)
                {
-                    if($ts.Days)
+                    if ($ts.Days)
                     {
                          return "{0:##}d {1:00}:{2:00}:{3:00}.{4:0000}" -f $ts.Days, $ts.Hours, $ts.Minutes, $ts.Seconds, $ts.Milliseconds
                     }
@@ -1887,50 +1893,51 @@ function Get-PerformanceHistory
 
                return "{0:##}:{1:00}.{2:0000}" -f $ts.Minutes, $ts.Seconds, $ts.Milliseconds
           }
-        
+
           return "{0:#0}.{1:0000}" -f $ts.Seconds, $ts.Milliseconds
      }
 
      # if there's only one id, then the count counts, otherwise we just use the ids
      # ... basically:    { 1..$count | % { $id += $id[-1]-1 }  }
-     if($Id.Count -eq 1)
+     if ($Id.Count -eq 1)
      {
-          $Id = ($Id[0])..($Id[0]-($Count-1)) 
-     } 
-    
+          $Id = ($Id[0])..($Id[0] - ($Count - 1))
+     }
+
      # so we can call it with just the IDs
      $cmdHistory = Get-History -Id $Id
      $measuredObjs = New-Object System.Collections.ArrayList
      foreach ($cmdId in $cmdHistory)
      {
-          $msr = $null           
-   
+          $msr = $null
+
           $tok = $Parser::Tokenize( $cmdId.CommandLine, [ref]$null )
-          if( ($tok[0].Type -eq "Number") -and 
-               ($tok[0].Content -le 1) -and 
-               ($tok[2].Type -eq "Number") -and 
+          if ( ($tok[0].Type -eq "Number") -and
+               ($tok[0].Content -le 1) -and
+               ($tok[2].Type -eq "Number") -and
                ($tok[1].Content -eq "..") )
           {
                $Count = ([int]$tok[2].Content) - ([int]$tok[0].Content) + 1
           }
-   
-          $com = @( $tok | Where-Object {$PSItem.Type -eq "Command"} | 
-               ForEach-Object { Get-Command $PSItem.Content -ErrorAction Ignore } | 
-               Where-Object { $PSItem.CommandType -eq "ExternalScript" } |
-               ForEach-Object { $PSItem.Path } )
+
+          $com = @( $tok | Where-Object {$PSItem.Type -eq "Command"} |
+                    ForEach-Object { Get-Command $PSItem.Content -ErrorAction Ignore } |
+                    Where-Object { $PSItem.CommandType -eq "ExternalScript" } |
+                    ForEach-Object { $PSItem.Path } )
 
           # If we actually got a script, measure it out
-          if($com.Count -gt 0)
+          if ($com.Count -gt 0)
           {
                $msr = Get-Content -path $com | Measure-Object -Line -Word -Character
-          } else
+          }
+          else
           {
                $msr = Measure-Object -in $cmdId.CommandLine -Line -Word -Character
           }
-        
+
           $cmdType = $null
 
-          if ($com.Count -gt 0) 
+          if ($com.Count -gt 0)
           {
                $cmdType = "Script"
           }
@@ -1940,19 +1947,19 @@ function Get-PerformanceHistory
           }
 
           [Void]$measuredObjs.Add( [PSCustomObject]@{
-                    'Id'          = $cmdId.Id
-                    'Duration'    = (FormatTimeSpan ($cmdId.EndExecutionTime - $cmdId.StartExecutionTime))
-                    'Average'     = (FormatTimeSpan ([TimeSpan]::FromTicks( (($cmdId.EndExecutionTime - $cmdId.StartExecutionTime).Ticks / $Count) )))
-                    'Lines'       = $msr.Lines
-                    'Words'       = $msr.Words
-                    'Chars'       = $msr.Characters
-                    'Type'        = $cmdType
-                    'Command'     = $cmdId.CommandLine
-                    'StartTime'   = $cmdId.StartExecutionTime
-                    'EndTime'     = $cmdId.EndExecutionTime
-               } )        
+                    'Id'        = $cmdId.Id
+                    'Duration'  = (FormatTimeSpan ($cmdId.EndExecutionTime - $cmdId.StartExecutionTime))
+                    'Average'   = (FormatTimeSpan ([TimeSpan]::FromTicks( (($cmdId.EndExecutionTime - $cmdId.StartExecutionTime).Ticks / $Count) )))
+                    'Lines'     = $msr.Lines
+                    'Words'     = $msr.Words
+                    'Chars'     = $msr.Characters
+                    'Type'      = $cmdType
+                    'Command'   = $cmdId.CommandLine
+                    'StartTime' = $cmdId.StartExecutionTime
+                    'EndTime'   = $cmdId.EndExecutionTime
+               } )
      }
-    
+
      # default formatting values
      $avgColSize = 0; $durColSize = 0; $typeColSize = 0
 
@@ -1961,36 +1968,36 @@ function Get-PerformanceHistory
      {
           if ($avgColSize -lt $mObj.Average.Length)
           {
-               $avgColSize = $mObj.Average.Length 
+               $avgColSize = $mObj.Average.Length
           }
           if ($durColSize -lt $mObj.Duration.Length)
           {
-               $durColSize = $mObj.Duration.Length 
+               $durColSize = $mObj.Duration.Length
           }
           if ($typeColSize -lt $mObj.Type.Length)
           {
-               $typeColSize = $mObj.Type.Length 
+               $typeColSize = $mObj.Type.Length
           }
 
      }
 
-     if($PassThru.IsPresent)
+     if ($PassThru.IsPresent)
      {
           Write-Output $measuredObjs
      }
      else
      {
           $measuredObjs | `
-        Sort-Object Id | `
-        Format-Table Id,`
-                     @{l=("{0,-$durColSize}" -f "Duration");e={"{0:#.#,$durColSize}" -f $PSItem.Duration}},`
-                     @{l=("{0,-$avgColSize}" -f "Average");e={"{0:#.#,$avgColSize}" -f $PSItem.Average}},`
-                     Lines,`
-                     Words,`
-                     Chars,`
-                     @{l=("{0,-$typeColSize}" -f "Type");e={"{0:#.#,$typeColSize}" -f $PSItem.Type}},`
-                     Command `
-                     -AutoSize -Wrap
+               Sort-Object Id | `
+               Format-Table Id,`
+          @{l = ("{0,-$durColSize}" -f "Duration");e = {"{0:#.#,$durColSize}" -f $PSItem.Duration}},`
+          @{l = ("{0,-$avgColSize}" -f "Average");e = {"{0:#.#,$avgColSize}" -f $PSItem.Average}},`
+               Lines,`
+               Words,`
+               Chars,`
+          @{l = ("{0,-$typeColSize}" -f "Type");e = {"{0:#.#,$typeColSize}" -f $PSItem.Type}},`
+               Command `
+               -AutoSize -Wrap
      }
 }
 
@@ -2011,7 +2018,7 @@ function Set-PSWindowTitle
      param
      (
           [ValidateNotNullOrEmpty()]
-          [String] 
+          [String]
           $Title
      )
 
@@ -2026,7 +2033,7 @@ function Get-TimeSinceStartDate
      param
      (
           [Parameter()]
-          [Switch] 
+          [Switch]
           $AsTimeSpan
      )
 
@@ -2052,7 +2059,7 @@ function Get-TimeSinceStartDate
 #endregion Functions
 
 #region Execution
-Load-Profile
+Import-Profile
 
 ### Persistent History ###
 $HistoryFilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) .ps_history

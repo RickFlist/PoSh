@@ -296,8 +296,15 @@ function Install-Module
           [Parameter()]
           [ValidateNotNullOrEmpty()]
           [System.IO.DirectoryInfo]
-          # Path to source location of module
+          # Path to source folder containing of module
           $Source = $PSScriptRoot
+          ,
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          [ValidateSet('AllUsersAllHosts','AllUsersCurrentHost','CurrentUserAllHosts','CurrentUserCurrentHost')]
+          # Destination
+          [String]
+          $DesintationProfile = 'AllUsersAllHosts'
      )
 
      process
@@ -306,12 +313,37 @@ function Install-Module
           Write-Host ($PSScriptRoot)
           Write-Host ($PSCommandPath)
 
-          $destination = ([System.IO.DirectoryInfo] ('{0}\{1}\Documents\WindowsPowerShell\Modules\{2}' -f $env:HOMEDRIVE,$env:HOMEPATH,$Source.Name))
+          [System.IO.DirectoryInfo] $destination = $null
+          Swtich ($DesintationProfile)
+          {
+               "AllUsersAllHosts"
+               {
+                    $destination = (Join-Path -Path (Split-Path -LiteralPath $profile.AllUsersAllHosts) -ChildPath Modules)
+               }
+               "AllUsersCurrentHost"
+               {
+                    $destination = (Join-Path -Path (Split-Path -LiteralPath $profile.AllUsersCurrentHost) -ChildPath Modules)
+               }
+               "CurrentUserAllHosts"
+               {
+                    $destination = (Join-Path -Path (Split-Path -LiteralPath $profile.CurrentUserAllHosts) -ChildPath Modules)
+               }
+               "CurrentUserCurrentHost"
+               {
+                    $destination = (Join-Path -Path (Split-Path -LiteralPath $profile.CurrentUserCurrentHost) -ChildPath Modules)
+               }
 
-          Write-Debug ("Source: {0}" -f $Source.FullName)
-          Write-Debug ("Destination: {0}" -f $destination.FullName)
+          }
 
-          ROBOCOPY $Source $destination /MIR | Out-Null
+          $destination = ( ('{0}\{1}\Documents\WindowsPowerShell\Modules\{2}' -f $env:HOMEDRIVE,$env:HOMEPATH,$Source.Name))
+
+          Write-Host ("Source: {0}" -f $Source.FullName)
+          Write-Host ("Destination: {0}" -f $destination.FullName)
+
+          $roboCmd = 'c:\windows\system32\Robocopy.exe'
+          $logFileName = (Join-Path -Path $Source -ChildPath ('RoboCopyLog-{0}-{1}.log' -f $Source.Name,(Get-Date -Format yyyyMMdd.HHmmss)))
+          $roboArgs = ('{0} {1} /S /ZB /J /COPYALL /PURGE /TIMFIX /R:10 /W:10 /V /NP /ETA /:LOG+{2}' -f $Source,$destination,$logFileName)
+          Start-Process -FilePath $roboCmd -ArgumentList $roboArgs -WorkingDirectory $Source -LoadUserProfile -NoNewWindow -Wait
      }
 }
 
