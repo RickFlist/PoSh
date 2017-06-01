@@ -660,7 +660,7 @@ function Protect-Credential
           return $cmsBase64String
      }
 }
-New-Alias -Name "ConvertTo-EncryptedCredential" -Value 'Protect-Credential' -Scope Gobal
+New-Alias -Name 'ConvertTo-EncryptedCredential' -Value 'Protect-Credential' -Scope "Global" -Force
 
 function Protect-String
 {
@@ -704,7 +704,7 @@ function Protect-String
           return $cmsBase64String
      }
 }
-New-Alias -Name 'ConvertTo-EncryptedString' -Scope Global -Value 'Protect-String'
+New-Alias -Name 'ConvertTo-EncryptedString' -Scope "Global" -Force -Value 'Protect-String'
 
 function Unprotect-Credential
 {
@@ -753,7 +753,7 @@ function Unprotect-Credential
           Write-Output $psCredObj -NoEnumerate
      }
 }
-New-Alias -Name 'ConvertFrom-EncryptedCredential' -Value 'Unprotect-Credential' -Scope Global
+New-Alias -Name 'ConvertFrom-EncryptedCredential' -Value 'Unprotect-Credential' -Scope "Global" -Force
 
 function Unprotect-SecureString
 {
@@ -776,7 +776,7 @@ function Unprotect-SecureString
           Write-Output ($decryptedSecret)
      }
 }
-New-Alias -Name 'ConvertFrom-EncryptedString' -Scope Global -Value 'Unprotect-String'
+New-Alias -Name 'ConvertFrom-EncryptedString' -Scope "Global" -Force -Value 'Unprotect-String'
 
 function Unprotect-String
 {
