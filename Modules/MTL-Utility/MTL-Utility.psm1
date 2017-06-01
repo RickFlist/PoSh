@@ -1,8 +1,10 @@
 #region Script-Variables
+# Librari locations - Must be replaced with Username
+$Script:LibrarySourcePath = [System.IO.DirectoryInfo] ('C:\Users\{0}\AppData\Roaming\Microsoft\Windows\Libraries')
 #endregion Script-Variables
 
 #region Public-Functions
-#region *-EnvironmentPath
+#region *-Path
 
 function Get-EnvironmentPath
 {
@@ -26,9 +28,11 @@ function Get-EnvironmentPath
           foreach ($scope in $Scopes)
           {
                $envPath = [String]::Empty
-               $envPath = ([System.Environment]::GetEnvironmentVariable($envVarName,$scope))
+               $envPath = @([System.Environment]::GetEnvironmentVariable($envVarName,$scope))
+
                if ($envPath.Count -gt 0)
                {
+                    Write-Host ('*' * 40 ) -ForegroundColor DarkGray
                     $msg = ('Getting PATH variable for ''{0}''' -f $scope)
                     Write-Host $msg -ForegroundColor Green
 
@@ -60,6 +64,62 @@ function Get-EnvironmentPath
      }
 }
 
+function Get-PsModulePath
+{
+     [CmdletBinding()]
+     [OutputType([String[]])]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          [ValidateSet([System.EnvironmentVariableTarget]::Machine,[System.EnvironmentVariableTarget]::Process,[System.EnvironmentVariableTarget]::User)]
+          # Scopes to retrieve
+          [System.EnvironmentVariableTarget[]]
+          $Scopes = ([System.EnvironmentVariableTarget]::Machine)
+     )
+
+     process
+     {
+          $envVarName = 'PSModulePath'
+          $hTable = @{}
+          foreach ($scope in $Scopes)
+          {
+               $envPath = [String]::Empty
+               $envPath = @([System.Environment]::GetEnvironmentVariable($envVarName,$scope))
+
+               if ([String]::IsNullOrEmpty($envPath))
+               {
+                    $msg = ('Getting PATH variable for ''{0}''' -f $scope)
+                    Write-Host $msg -ForegroundColor Green
+
+                    $fmtdPath = New-Object -TypeName System.Collections.ArrayList
+                    foreach ($path in $envPath.Split(';',[StringSplitOptions]::RemoveEmptyEntries))
+                    {
+                         if (Test-Path -LiteralPath $path -PathType Container)
+                         {
+                              $fmtdPath.Add((ConvertTo-TitleCase -InputObject $path)) | Out-Null
+                         }
+                    }
+
+                    $newPath = ($fmtdPath | Select-Object -Unique | Sort-Object)
+                    ((($newPath | Out-String).Trim()) | Out-Host)
+                    Write-Host ('*' * 40 ) -ForegroundColor DarkGray
+                    $hTable.Add($scope.ToString(),$newPath)
+                    Write-Host
+               }
+               else
+               {
+                    $msg = ('No ''{0}'' variabe set for scope ''{1}''' -f $envVarNaame,$scope)
+                    Write-Host ('*' * 40) -ForegroundColor Gray
+                    Write-Host ('No ''{0}'' variabe set for scope ''{1}''' -f $envVarName,$scope) -ForegroundColor Yellow
+                    $hTable.Add($scope.ToString(),[String]::Empty)
+                    Write-Host ('*' * 40) -ForegroundColor Gray
+               }
+          }
+          return $hTable
+     }
+}
 
 function Set-EnvironmentPath
 {
@@ -283,7 +343,7 @@ function Update-EnvironmentPath
      }
 
 }
-#endregion *-EnvironmentPath
+#endregion *-Path
 
 #region *-Module
 function Install-Module
@@ -571,6 +631,148 @@ function New-Folder
      }
 }
 #endregion Disk-Functions
+
+#region Libraries
+function Add-FolderToLibrary
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # LiteralPath to the folder to be added to library
+          [System.IO.DirectoryInfo]
+          $LiteralPath
+          ,
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # Name of the library to add file to
+          [String]
+          $LibraryName
+     )
+
+     process
+     {
+          $destLib = (Get-ChildItem -LiteralPath ($Script:LibrarySourcePath -f $env:USERNAME) -File -ErrorAction SilentlyContinue)
+
+          if ($destLib)
+          {
+               $destLib.Refresh()
+               if (-not $destLib.Exists)
+               {
+                    throw (New-Object -TypeName System.FileNotFoundException -ArgumentList ('Cannot locate file ''{0}''' -f $si))
+               }
+               else
+               {
+                    $xml = [Xml] (Get-Content -LiteralPath $destLib -Raw)
+
+               }
+
+          }
+          else
+          {
+               Write-Host ('Unable to locate library file ''{0}''' -f $LibraryName)
+          }
+     }
+}
+
+function Get-WindowsLibraries
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Name of the user the get libraries for
+          [String]
+          $Username = ($env:USERNAME)
+     )
+
+     process
+     {
+          $allLibs = @(Get-ChildItem -LiteralPath ($Script:LibrarySourcePath -f $env:USERNAME) -File -ErrorAction SilentlyContinue)
+
+          return $allLibs
+     }
+}
+
+function Hide-WindowsLibrary
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # Name of library to remove (minus extension)
+          [String]
+          $LibraryName
+          ,
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Username to modify libraries for
+          [String]
+          $Username = ($env:USERNAME)
+     )
+
+     process
+     {
+          # From: https://stackoverflow.com/questions/42028926/how-to-change-extended-windows-file-attributes-via-powershell-without-using-attr
+          # From: https://technet.microsoft.com/en-us/library/ee461108(v=WS.10).aspx#BKMK_CustomizeandDeployLibraries
+
+          $searchPath = ('C:\Users\ {0}\AppData\Roaming\Microsoft\Windows\Libraries' -f $Username)
+          $anyLibs = @(Get-ChiledItem -LiteralPath $searchPath -File | Where-Object ($PSItem.BaseName -eq $LibraryName))
+
+          ig (-not $anylibs)
+          {
+               throw (New-Object -TypeName System.IO.FileNotFoundException -ArgumentList ('Unable to locate library ''{0}''' -f $LibraryName))
+          }
+
+          foreach ($lib in $LibraryName)
+          {
+               Write-Host ('Setting attribute on file ''{0}'' to Hidden' -f $lib.BaseName)
+               $lib.Attribute = [System.IO.FileAttributes]::Hidden
+          }
+     }
+}
+
+function Set-WindowsLibrarySearchable
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # Name of library to remove (minus extension)
+          [String]
+          $LibraryName
+          ,
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Username to modify libraries for
+          [String]
+          $Username = ($env:USERNAME)
+          ,
+          [Parameter()]
+          # Add folder to library
+          [Switch]
+          $AddToLibrary
+
+     )
+
+     process
+     {
+          Code
+     }
+}
+#endregion Libraries
 
 #region String-Manipulation
 function ConvertTo-TitleCase
