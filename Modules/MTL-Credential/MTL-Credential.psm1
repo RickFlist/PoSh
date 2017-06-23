@@ -241,15 +241,13 @@ function Set-ServiceAccountAdPassword
      process
      {
           <#
-        $passesAuth = Test-UserAuthentication -Username $Username -Password $CurrentPassword
-        if (-not $passesAuth)
-        {
-            throw (New-Object -TypeName System.InvalidOperationException -ArgumentList ('Unable to authenticate ''{0}'' with current password. Please check your typing and try again' -f $Username))
-        }
-        #>
+          $passesAuth = Test-UserAuthentication -Username $Username -Password $CurrentPassword
+          if (-not $passesAuth)
+          {
+               throw (New-Object -TypeName System.InvalidOperationException -ArgumentList ('Unable to authenticate ''{0}'' with current password. Please check your typing and try again' -f $Username))
+          }
+          #>
 
-          $fullUserName = ('{0}\{1}' -f $Domain,$Username)
-          $currentCreds = New-MdpCredential -Username $fullUserName -Password $CurrentPassword
           $secOldPassword = ConvertTo-SecureString -String $CurrentPassword -AsPlainText -Force
           $secNewPassword = ConvertTo-SecureString -String $NewPassword -AsPlainText -Force
           #Set-ADAccountPassword -Credential $currentCreds -Identity $Username -Server $Domain -NewPassword $secNewPassword -OldPassword $secOldPassword

@@ -22,7 +22,7 @@ function Get-OneDriveUserFolder
             $regPath = 'hkcu:\Software\Microsoft\Windows\CurrentVersion\SkyDrive\'
             $regKey = 'UserFolder'
 
-            $oneDriveUserFolder = (Get-ItemProperty -Path $regPath -Name $regKey).UserFolder 
+            $oneDriveUserFolder = (Get-ItemProperty -Path $regPath -Name $regKey).UserFolder
         }
 
         Write-Output ($oneDriveUserFolder)
@@ -36,4 +36,5 @@ $Global:SyncedProfilePath = ([System.IO.FileInfo] (Join-Path -Path (Get-OneDrive
 . $($Global:SyncedProfilePath.FullName)
 #>
 
-. "D:\src\PoSh\Profile\Profile-Current.ps1"
+. "D:\Source\PoSh\Profile\Profile-Current.ps1"
+. "D:\Source\PoSh\Profile\MaxLabs.ps1"

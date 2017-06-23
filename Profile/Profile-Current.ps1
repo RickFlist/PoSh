@@ -1454,22 +1454,25 @@ function Import-CommandHistory
      }
 }
 
-function Import-MdpModules
+function Import-MaxModules
 {
      [CmdletBinding()]
      [OutputType()]
+
      param
      (
           [Parameter()]
           [ValidateNotNullOrEmpty()]
+          # Path to MAX modules
           [System.IO.DirectoryInfo]
-          # The path containing the MDP PowerShell modules
-          $LiteralPath = 'D:\src\MDP-DevOps'
+          $LiteralPath = ('\\max-share\library\scripts\functions')
      )
 
      process
      {
-          Get-ChildItem -LiteralPath (Join-Path -Path $LiteralPath -ChildPath 'PowerShell')  -Directory -Filter MDP* | Sort-Object -Property Name | ForEach-Object {Import-Module $PSItem.FullName -Force -DisableNameChecking -Global}
+          Get-ChildItem -LiteralPath $LiteralPath -File -Filter 'MAX*.psm1' | ForEach-Object {
+               Import-Module -Name $PSItem.FullName -Global -Force
+          }
      }
 }
 
@@ -1532,6 +1535,53 @@ function Prompt
      Microsoft.PowerShell.Utility\Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$('>' * ($NestedPromptLevel + 1))")
+}
+
+function Register-RmProfile
+{
+     [CmdletBinding()]
+     param
+     (
+          [Parameter()]
+          [Switch]
+          # For re-authentication of Azure account
+          $Force
+     )
+
+     process
+     {
+          Import-Module AzureRM.profile -Force -Global
+
+          $profPath = [System.IO.FileInfo] (Join-Path -Path $env:APPDATA -ChildPath ('AzureProfiles\AzProfile-{0}.json' -f $env:USERNAME))
+          if (-not (Test-Path -LiteralPath $profPath.Directory.FullName -PathType Container))
+          {
+               $profPath.Directory.Create() | Out-Null
+          }
+
+          if ($Force.IsPresent)
+          {
+               $rmProfile = Login-AzureRmAccount
+
+               if ($profPath.Exists)
+               {
+                    Remove-Item -LiteralPath $profPath.FullName -Force
+               }
+
+               Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
+          }
+          else
+          {
+               if (-not $profPath.Exists)
+               {
+                    $rmProfile = Login-AzureRmAccount
+                    Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
+               }
+          }
+
+          $azContext = Import-AzureRmContext -Path $profPath
+          Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
+
+     }
 }
 
 function Start-QLApps
@@ -1823,113 +1873,6 @@ function Set-PsReadLineConfiguration
           # CaptureScreen is good for blog posts or email showing a transaction
           # of what you did when asking for help or demonstrating a technique.
           Set-PSReadlineKeyHandler -Chord 'Ctrl+D,Ctrl+C' -Function CaptureScreen
-
-          #region Smart Insert/Delete
-
-          # The next four key handlers are designed to make entering matched quotes
-          # parens, and braces a nicer experience. I'd like to include functions
-          # in the module that do this, but this implementation still isn't as smart
-          # as ReSharper, so I'm just providing it as a sample.
-
-          Set-PSReadlineKeyHandler -Key '"',"'" `
-               -BriefDescription SmartInsertQuote `
-               -LongDescription "Insert paired quotes if not already on a quote" `
-               -ScriptBlock {
-               param($key, $arg)
-
-               $line = $null
-               $cursor = $null
-               [PSConsoleUtilities.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
-
-               if ($line[$cursor] -eq $key.KeyChar)
-               {
-                    # Just move the cursor
-                    [PSConsoleUtilities.PSConsoleReadLine]::SetCursorPosition($cursor + 1)
-               }
-               else
-               {
-                    # Insert matching quotes, move cursor to be in between the quotes
-                    [PSConsoleUtilities.PSConsoleReadLine]::Insert("$($key.KeyChar)" * 2)
-                    [PSConsoleUtilities.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
-                    [PSConsoleUtilities.PSConsoleReadLine]::SetCursorPosition($cursor - 1)
-               }
-          }
-
-          Set-PSReadlineKeyHandler -Key '(','{','[' `
-               -BriefDescription InsertPairedBraces `
-               -LongDescription "Insert matching braces" `
-               -ScriptBlock {
-               param($key, $arg)
-
-               $closeChar = switch ($key.KeyChar)
-               {
-                    <#case#> '(' { [char]')'; break }
-                    <#case#> '{' { [char]'}'; break }
-                    <#case#> '[' { [char]']'; break }
-               }
-
-               [PSConsoleUtilities.PSConsoleReadLine]::Insert("$($key.KeyChar)$closeChar")
-               $line = $null
-               $cursor = $null
-               [PSConsoleUtilities.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
-               [PSConsoleUtilities.PSConsoleReadLine]::SetCursorPosition($cursor - 1)
-          }
-
-          Set-PSReadlineKeyHandler -Key ')',']','}' `
-               -BriefDescription SmartCloseBraces `
-               -LongDescription "Insert closing brace or skip" `
-               -ScriptBlock {
-               param($key, $arg)
-
-               $line = $null
-               $cursor = $null
-               [PSConsoleUtilities.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
-
-               if ($line[$cursor] -eq $key.KeyChar)
-               {
-                    [PSConsoleUtilities.PSConsoleReadLine]::SetCursorPosition($cursor + 1)
-               }
-               else
-               {
-                    [PSConsoleUtilities.PSConsoleReadLine]::Insert("$($key.KeyChar)")
-               }
-          }
-
-          Set-PSReadlineKeyHandler -Key Backspace `
-               -BriefDescription SmartBackspace `
-               -LongDescription "Delete previous character or matching quotes/parens/braces" `
-               -ScriptBlock {
-               param($key, $arg)
-
-               $line = $null
-               $cursor = $null
-               [PSConsoleUtilities.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
-
-               if ($cursor -gt 0)
-               {
-                    $toMatch = $null
-                    switch ($line[$cursor])
-                    {
-                         <#case#> '"' { $toMatch = '"'; break }
-                         <#case#> "'" { $toMatch = "'"; break }
-                         <#case#> ')' { $toMatch = '('; break }
-                         <#case#> ']' { $toMatch = '['; break }
-                         <#case#> '}' { $toMatch = '{'; break }
-                    }
-
-                    if ($toMatch -ne $null -and $line[$cursor - 1] -eq $toMatch)
-                    {
-                         [PSConsoleUtilities.PSConsoleReadLine]::Delete($cursor - 1, 2)
-                    }
-                    else
-                    {
-                         [PSConsoleUtilities.PSConsoleReadLine]::BackwardDeleteChar($key, $arg)
-                    }
-               }
-          }
-
-          #endregion Smart Insert/Delete
-
      }
 }
 
@@ -1960,10 +1903,10 @@ function Get-TimeSinceStartDate
 
      process
      {
-          $startDate = (Get-Date -Date "12/12/2016 9:45 AM")
-          $contractLength = 18
+          $startDate = (Get-Date -Date "06/06/2017 10:00 AM")
+          $contractLength = 12
           $elapsedTime = ((Get-Date).Subtract($StartDate))
-          $timeLeft = ($StartDate.AddMonths($contractLength).Subtract((Get-Date)))
+          $timeLeft = ($StartDate.AddMonths($contractLength)).Subtract((Get-Date))
 
           if ($AsTimeSpan.IsPresent)
           {
@@ -1980,19 +1923,27 @@ function Get-TimeSinceStartDate
 #endregion Functions
 
 #region Execution
-Import-Profile
-
-### Persistent History ###
-$HistoryFilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) .ps_history
-Register-EngineEvent PowerShell.Exiting -Action { Export-CommandHistory -Path $HistoryFilePath  } | Out-Null
-if (Test-path $HistoryFilePath)
+if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE Host') -or ($Host.Name -eq 'Visual Studio Code Host'))
 {
-     Import-CommandHistory -Path $HistoryFilePath
+
+     Import-Profile
+
+     ### Persistent History ###
+     $HistoryFilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) .ps_history
+     Register-EngineEvent PowerShell.Exiting -Action { Export-CommandHistory -Path $HistoryFilePath  } | Out-Null
+     if (Test-path $HistoryFilePath)
+     {
+          Import-CommandHistory -Path $HistoryFilePath
+     }
+
+     Set-PsReadLineConfiguration
+
+     Register-RmProfile
+
+     Import-MaxModules
+
+     #Set-DebugPreference -Preference Continue
+     #Set-VerbosePreference -Preference Continue
+     Set-InformationPreference -Preference Continue
 }
-
-#Set-DebugPreference -Preference Continue
-#Set-VerbosePreference -Preference Continue
-Set-InformationPreference -Preference Continue
-
-#Import-MdpModules
 #endregion Execution
