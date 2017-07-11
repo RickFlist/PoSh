@@ -606,7 +606,7 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
           #$caretLine = $editor.CaretLine
           if ($editor.SelectedText)
           {
-               Write-Host 'selected'
+               Microsoft.PowerShell.Utility\Write-Host 'selected'
                $editor.InsertText(($editor.SelectedText -replace '(?m)\s*$', ''))
           }
           else
@@ -1261,42 +1261,42 @@ function Resolve-Error
      $headerColor = [System.ConsoleColor]::Green
      $lineWidth = ($Host.UI.RawUI.BufferSize.Width - 1)
 
-     Write-Host
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
-     Write-Host ('Error Details ($error[0] | Format-List * -Force)') -ForegroundColor $headerColor
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host ('Error Details ($error[0] | Format-List * -Force)') -ForegroundColor $headerColor
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
 
      ($errorRecord | Format-List * -Force | Out-String).Trim("`r`n")
 
-     Write-Host
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
-     Write-Host ('InvocationInfo ($error[0].InvocationInfo | Format-List *)') -ForegroundColor $headerColor
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host ('InvocationInfo ($error[0].InvocationInfo | Format-List *)') -ForegroundColor $headerColor
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
 
      ($errorRecord.InvocationInfo | Format-List * | Out-String).Trim("`r`n")
 
      if ($ErrorRecord.TargetObject)
      {
-          Write-Host
-          Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
-          Write-Host ('TargetObject Details ($error[0].TargetObject | Format-List *)') -ForegroundColor $headerColor
-          Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+          Microsoft.PowerShell.Utility\Write-Host
+          Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+          Microsoft.PowerShell.Utility\Write-Host ('TargetObject Details ($error[0].TargetObject | Format-List *)') -ForegroundColor $headerColor
+          Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
           ($errorRecord.TargetObject | Format-List * | Out-String).Trim("`r`n")
      }
 
-     Write-Host
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
-     Write-Host ('Exception Details ($error[0].Exception | Format-List * -Force)') -ForegroundColor $headerColor
-     Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
+     Microsoft.PowerShell.Utility\Write-Host ('Exception Details ($error[0].Exception | Format-List * -Force)') -ForegroundColor $headerColor
+     Microsoft.PowerShell.Utility\Write-Host ('-' * $lineWidth) -ForegroundColor $bannerColor
 
      $exception = $errorRecord.Exception
 
      for ($i = 1; $exception; $i++, ($exception = $exception.InnerException))
      {
           $tabs = ("----" * ($i + 1))
-          Write-Host ('{0:00}) Exception: {1}' -f $i,$exception.GetType().FullName) -ForegroundColor Yellow
+          Microsoft.PowerShell.Utility\Write-Host ('{0:00}) Exception: {1}' -f $i,$exception.GetType().FullName) -ForegroundColor Yellow
           ($exception | Format-List * -Force | Out-String).Trim("`r`n")
-          Write-Host
+          Microsoft.PowerShell.Utility\Write-Host
      }
 }
 
@@ -1391,7 +1391,7 @@ function Restart-PowerShellAsAdmin
           }
 
           # Run your code that needs to be elevated here
-          Write-Host -NoNewLine "Press any key to continue..."
+          Microsoft.PowerShell.Utility\Write-Host -NoNewLine "Press any key to continue..."
           $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
      }
 }
@@ -1400,38 +1400,85 @@ function Update-AllModules
 {
      Import-Module -Name PowerShellGet -Force -ErrorAction Stop
 
-     Write-Host ('Retrieving a list of all modules install on the system...')
+     Microsoft.PowerShell.Utility\Write-Host ('Retrieving a list of all modules install on the system...')
      $allModules = (Get-Module -ListAvailable)
 
      foreach ($mod in $allModules)
      {
-          Write-Host ('Checking for updates to ') -NoNewline
-          Write-Host ($mod.Name) -ForegroundColor Green
+          Microsoft.PowerShell.Utility\Write-Host ('Checking for updates to ') -NoNewline
+          Microsoft.PowerShell.Utility\Write-Host ($mod.Name) -ForegroundColor Green
 
           $modFound = (Find-Module -Name $mod.Name -ErrorAction SilentlyContinue)
 
           if ($modFound)
           {
-               Write-Host ('Found {0} in available galleries' -f $mod.Name)
+               Microsoft.PowerShell.Utility\Write-Host ('Found {0} in available galleries' -f $mod.Name)
 
                if ($mod.Version -eq $modFound.Version)
                {
-                    Write-Host ('No update required') -ForegroundColor Gray
+                    Microsoft.PowerShell.Utility\Write-Host ('No update required') -ForegroundColor Gray
                }
                elseif ($mod.Version -lt $modFound.Version)
                {
-                    Write-Host ('Update found for {0}. Updating...' -f $mod.Name)
+                    Microsoft.PowerShell.Utility\Write-Host ('Update found for {0}. Updating...' -f $mod.Name)
                     Update-Module -Name $mod.Name
-                    Write-Host ('Update completed')
+                    Microsoft.PowerShell.Utility\Write-Host ('Update completed')
                }
           }
           else
           {
-               Write-Host ('Unable to find {0} in currently available Repositories (or Repositories are currently unavailable)' -f $mod.Name)
+               Microsoft.PowerShell.Utility\Write-Host ('Unable to find {0} in currently available Repositories (or Repositories are currently unavailable)' -f $mod.Name)
           }
      }
 }
 #endregion Misc-Utility-Commands
+
+#region Network-Commands
+function Set-DnsSuffixList
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Suffixes to Append
+          [String[]]
+          $DnsSuffix = @('osscpub.selfhost.corp.microsoft.com')
+     )
+
+     process
+     {
+          if (-not (Get-DnsClientGlobalSetting).SuffixSearchList)
+          {
+               Microsoft.PowerShell.Utility\Write-Host ('Adding DNS suffix "') -NoNewline
+               Microsoft.PowerShell.Utility\Write-Host ('{0}' -f ($DnsSuffix -join ',')) -NoNewline
+               Microsoft.PowerShell.Utility\Write-Host ('"')
+
+               $totalSufficxes = ([String[]] (Get-DnsClientGlobalSetting).SuffixSearchList)
+               $totalSufficxes += ([String[]] ($DnsSuffix))
+
+               Set-DnsClientGlobalSetting -SuffixSearchList $totalSufficxes
+          }
+
+          Microsoft.PowerShell.Utility\Write-Host ('Attempting to resolve "') -NoNewline
+          Microsoft.PowerShell.Utility\Write-Host ('MAX-SHARE (without DNS suffix)')
+          try
+          {
+
+               $compName = 'MAX-SHARE'
+               Write-Host ('Resolving DNS for "{0}"' -f $compName)
+               Resolve-DnsName -Name $compName
+          }
+          catch
+          {
+               throw $PSItem
+          }
+
+     }
+}
+#endregion Network-Commands
 
 #region Profile-Commands
 function Import-CommandHistory
@@ -1579,7 +1626,7 @@ function Register-RmProfile
           }
 
           $azContext = Import-AzureRmContext -Path $profPath
-          Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
+          Microsoft.PowerShell.Utility\Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
 
      }
 }
@@ -1592,7 +1639,7 @@ function Start-QLApps
 
      foreach ($link in $allLnks)
      {
-          Write-Host ('Starting {0}' -f $link.BaseName)
+          Microsoft.PowerShell.Utility\Write-Host ('Starting {0}' -f $link.BaseName)
           Start-Process -FilePath $link.FullName
      }
 
@@ -1923,6 +1970,8 @@ function Get-TimeSinceStartDate
 #endregion Functions
 
 #region Execution
+Set-DnsSuffixList
+Prompt
 if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE Host') -or ($Host.Name -eq 'Visual Studio Code Host'))
 {
 
