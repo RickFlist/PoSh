@@ -1609,6 +1609,7 @@ function Register-RmProfile
           {
                $rmProfile = Login-AzureRmAccount
 
+               $profPath.Refresh()
                if ($profPath.Exists)
                {
                     Remove-Item -LiteralPath $profPath.FullName -Force
@@ -1964,6 +1965,19 @@ function Get-TimeSinceStartDate
                Write-Output ('{0:000} days, {1:00} hours, {2:00} minutes, {3:00} seconds, {4:0000} milliseconds elapsed' -f $ElapsedTime.Days,$ElapsedTime.Hours,$ElapsedTime.Minutes,$ElapsedTime.Seconds,$ElapsedTime.Milliseconds)
                Write-Output ('{0:000} days, {1:00} hours, {2:00} minutes, {3:00} seconds, {4:0000} milliseconds remaining' -f $timeLeft.Days,$timeLeft.Hours,$timeLeft.Minutes,$timeLeft.Seconds,$timeLeft.Milliseconds)
           }
+     }
+}
+
+function Register-NugetPackageSource
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          Register-PackageSource -Name Nuget.org -ProviderName NuGet -Location https://api.nuget.org/v3/index.json
      }
 }
 #endregion Misc-Commands-All
