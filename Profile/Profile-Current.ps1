@@ -1577,6 +1577,32 @@ function Import-Profile
      New-Alias -Name Set-Verbose -Value Set-VerbosePreference -Force -Scope Global
 }
 
+function Open-VsCodeLogFolder
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          start ('{0}\logs' -f ((Get-ChildItem -LiteralPath $HOME\.vscode\extensions -Filter *powershell* | Sort Name -Descending | Select -First 1).FullName))
+     }
+}
+
+function Open-VsCodeUserFolder
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          start ('{0}\Code\User' -f $env:APPDATA)
+     }
+}
+
 function Prompt
 {
      # Color for seperator ' -|- '
