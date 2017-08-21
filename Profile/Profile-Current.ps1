@@ -1481,6 +1481,40 @@ function Set-DnsSuffixList
 #endregion Network-Commands
 
 #region Profile-Commands
+function Export-VsCodeUserProfile
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Username to back up
+          [String]
+          $Username = ($env:USERNAME)
+          ,
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Destination to backup profile to
+          [System.IO.DirectoryInfo]
+          $Destination = ('{0}\Backups\VsCode' -f $env:OneDrive)
+     )
+
+     process
+     {
+          $Username = $Username.ToLower()
+          $vsCodeProfPath = ([System.IO.DirectoryInfo] ('{0}\Users\{1}\AppData\Roaming\Code\User' -f $env:SystemDrive,$Username))
+          $vsCodeProfPath.Refresh()
+
+          if (-not $vsCodeProfPath.Exists)
+          {
+               throw (New-Object -TypeName System.IO.DirectoryNotFoundException -ArgumentList ('Cannot locate VS Code profile at "{0}"' -f $vsCodeProfPath.FullName))
+          }
+
+          ROBOCOPY $vsCodeProfPath.FullName $Destination.FullName *.* /MIR /R:10 /W:5 /ZB /V /NP /ETA
+     }
+}
 function Import-CommandHistory
 {
      [CmdletBinding()]
