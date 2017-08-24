@@ -2061,7 +2061,7 @@ if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE H
 
      Set-PsReadLineConfiguration
 
-     Register-RmProfile
+     # Register-RmProfile
 
      Import-MaxModules
 
