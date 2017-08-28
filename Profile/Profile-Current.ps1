@@ -1435,7 +1435,7 @@ function Update-AllModules
 
 #region Network-Commands
 
-function Cmdlet-Name
+function Test-DnsNameResolutionByConnection
 {
      [CmdletBinding()]
      [OutputType([PSCustomObject])]
@@ -1454,32 +1454,106 @@ function Cmdlet-Name
 
      process
      {
+          $ipPadding = (-18)
+          $dnsNamePadding = ( -( $DnsNames | Sort-Object -Property Length -Descending | Select-Object -First 1 | ForEach-Object { $PSItem.Length } ) + -4 )
+          $separator = ('{0}-' -f ('-=' * 15))
+          $ProgressPreference = 'SilentlyContinue'
+
+          # Get all non-local interfaces with v4 IP addresses and IPAddress does not start with 169
+          Write-Host ('Gathering adapters with valid routable v4 IP addresses') -ForegroundColor Green
+
           # Gather required interface information
           $iFaces = (Get-NetIPAddress -AddressFamily IPv4 | `
-          Where-Object {
-          ($PSItem.InterfaceIndex -ge 10) -and `
-          (-not $PSItem.IPv4Address.StartsWith('16')) -and `
-          (-not $PSItem.InterfaceAlias.StartsWith('vEthernet'))
-          } | `
-          ForEach-Object {
-          $ifIndex = $PSItem.InterfaceIndex
-          $naObj = Get-NetAdapter | Where-Object { $PSItem.InterfaceIndex -eq $ifIndex }
+               Where-Object {
+                    ($PSItem.InterfaceIndex -ge 10) -and `
+                    (-not $PSItem.IPv4Address.StartsWith('16'))
+               } | `
+               ForEach-Object {
+                    $ifIndex = $PSItem.InterfaceIndex
+                    $naObj = Get-NetAdapter | Where-Object { $PSItem.InterfaceIndex -eq $ifIndex }
 
-          $ifDesc = [String]::Empty
-          if ($naObj)
-          { $ifDesc = $naObj.InterfaceDescription }
-          else
-          { $ifDesc = $PSItem.InterfaceAlias }
+                    $ifDesc = [String]::Empty
+                    if ($naObj)
+                    { $ifDesc = $naObj.InterfaceDescription }
+                    else
+                    { $ifDesc = $PSItem.InterfaceAlias }
 
-          Write-Output ([PSCustomObject] @{
-               Index = $ifIndex
-               NIC = $ifDesc
-               Alias = $PSItem.InterfaceAlias
-               DnsServerIps = ( (Get-DnsClientServerAddress -InterfaceIndex $ifIndex).ServerAddresses | Where-Object { -not $PSItem.Contains(':') } | ForEach-Object { $PSItem.Trim() } )
-               LocalIpAddress = $PSItem.IPv4Address
-          })
-          }
+                    Write-Output ([PSCustomObject] @{
+                         Index = $ifIndex
+                         NIC = $ifDesc
+                         Alias = $PSItem.InterfaceAlias
+                         DnsServerIps = ( (Get-DnsClientServerAddress -InterfaceIndex $ifIndex).ServerAddresses | Where-Object { -not $PSItem.Contains(':') } | ForEach-Object { $PSItem.Trim() } )
+                         LocalIpAddress = $PSItem.IPv4Address
+                    })
+               }
           )
+
+          # Query DNS
+          Write-Host
+          Write-Host ('{0} interfaces found matching criteria' -f $iFaces.Count) -ForegroundColor Green
+          Write-Host
+          $iFaces | ForEach-Object {
+
+               Write-Host ('NIC: {0} - {1}' -f $PSItem.NIC,$PSItem.LocalIpAddress) -ForegroundColor Blue -BackgroundColor White
+               Write-Host ($separator * 3) -ForegroundColor Blue -BackgroundColor White
+               Write-Host
+
+               Write-Host ("`tNIC IP {0}: Processing {1} DNS Server IPs" -f $PSItem.LocalIpAddress,$PSItem.DnsServerIps.Count)
+               Write-Host
+
+               foreach ($ip in $PSItem.DnsServerIps)
+               {
+                    Write-Host ("`t`tDNS Server {0}: Processing {1} DNS Name(s)" -f $ip,$DnsNames.Count) -ForegroundColor DarkGreen -BackgroundColor White
+                    Write-Host ("`t`t{0}" -f ($separator * 3)) -ForegroundColor DarkGreen -BackgroundColor White
+                    Write-Host
+
+                    $resultObj = [PSCustomObject] @{
+                         Index = $PSItem.Index
+                         NIC = $PSItem.NIC
+                         Alias = $PSItem.Alias
+                         IpAddress = $PSItem.LocalIpAddress
+                         DnsServerIp = $ip
+                         NameResolutionResult = ([PSCustomObject[]] @())
+                    }
+
+                    foreach ($name in $DnsNames)
+                    {
+                         Clear-DnsClientCache
+
+                         $dnsResults = ([PSCustomObject] @{
+                              DnsName = $name
+                              CanResolveDns = $false
+                              ResolvedIpAddresses = [String]::Empty
+                         })
+
+                         Write-Host ("`t`t`t`tName: {0,$dnsNamePadding}: DNS Server {1}" -f $name,$ip) -ForegroundColor Green
+                         try
+                         {
+                              $resolvedIps = ((Resolve-DnsName -Name $name -DnsOnly -NoHostsFile -Server $ip -ErrorAction Stop).IpAddress -join ',')
+
+                              $dnsResults.CanResolveDns = $true
+                              $dnsResults.ResolvedIpAddresses = $resolvedIps
+
+                              Write-host ("`t`t`t`t{0,$dnsNamePadding}   : " -f 'Success - Resolved IP(s)') -ForegroundColor Green -NoNewline
+                              Write-Host ("{0}" -f $resolvedIps) -ForegroundColor White -NoTimeStamp
+                         }
+                         catch
+                         {
+                              $dnsResults.CanResolveDns = $false
+                              Write-host ("`t`t`t`t{0,$dnsNamePadding}      : " -f 'Error') -ForegroundColor Red -NoNewline
+                              Write-Host ("{0}" -f $PSItem.Exception.Message.Trim()) -ForegroundColor Red -NoTimeStamp
+                         }
+                         finally
+                         {
+                              $resultObj.NameResolutionResult += $dnsResults
+                         }
+
+                         Write-Host
+                    }
+                    Write-Output ($resultObj) -NoEnumerate
+               }
+          }
+          Write-Host
      }
 }
 
@@ -2119,3 +2193,4 @@ if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE H
      Set-InformationPreference -Preference Continue
 }
 #endregion Execution
+
