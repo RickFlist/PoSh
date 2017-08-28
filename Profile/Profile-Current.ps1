@@ -1434,6 +1434,55 @@ function Update-AllModules
 #endregion Misc-Utility-Commands
 
 #region Network-Commands
+
+function Cmdlet-Name
+{
+     [CmdletBinding()]
+     [OutputType([PSCustomObject])]
+
+     param
+     (
+          [Parameter(Mandatory = $true,
+               ValueFromPipeline = $true,
+               ValueFromPipelineByPropertyName = $true
+          )]
+          [ValidateNotNullOrEmpty()]
+          # DNS name(s) to resolve
+          [String[]]
+          $DnsNames
+     )
+
+     process
+     {
+          # Gather required interface information
+          $iFaces = (Get-NetIPAddress -AddressFamily IPv4 | `
+          Where-Object {
+          ($PSItem.InterfaceIndex -ge 10) -and `
+          (-not $PSItem.IPv4Address.StartsWith('16')) -and `
+          (-not $PSItem.InterfaceAlias.StartsWith('vEthernet'))
+          } | `
+          ForEach-Object {
+          $ifIndex = $PSItem.InterfaceIndex
+          $naObj = Get-NetAdapter | Where-Object { $PSItem.InterfaceIndex -eq $ifIndex }
+
+          $ifDesc = [String]::Empty
+          if ($naObj)
+          { $ifDesc = $naObj.InterfaceDescription }
+          else
+          { $ifDesc = $PSItem.InterfaceAlias }
+
+          Write-Output ([PSCustomObject] @{
+               Index = $ifIndex
+               NIC = $ifDesc
+               Alias = $PSItem.InterfaceAlias
+               DnsServerIps = ( (Get-DnsClientServerAddress -InterfaceIndex $ifIndex).ServerAddresses | Where-Object { -not $PSItem.Contains(':') } | ForEach-Object { $PSItem.Trim() } )
+               LocalIpAddress = $PSItem.IPv4Address
+          })
+          }
+          )
+     }
+}
+
 function Set-DnsSuffixList
 {
      [CmdletBinding()]
