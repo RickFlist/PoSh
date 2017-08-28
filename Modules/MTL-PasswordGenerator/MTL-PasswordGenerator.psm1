@@ -36,6 +36,11 @@ function New-WordBasedPassword
           # Forces reload of the world list if it is already cached
           [Switch]
           $ForceWordListReload
+          ,
+          [Parameter()]
+          # Returns word list without spaces
+          [Switch]
+          $NoSpaces
      )
 
      process
@@ -51,23 +56,37 @@ function New-WordBasedPassword
                Write-Verbose ('Word list exists at {0}' -f $WordListLiteralPath.FullName)
           }
 
-          $allWords = ([String[]] @())
-          if ( ( ($Script:WordCache.Count -ne 0) -and ($ForceWordListReload.IsPresent) ) -or ($Script:WordCache.Count -eq 0) )
+          if ( $PSBoundParameters.ContainsKey('WordListLiteralPath') )
           {
-               Write-Verbose ('Loading word list ...')
-               $wordListLoadStartTime = (Get-Date)
-               $allWords = ([String[]] @( Get-Content -LiteralPath $WordListLiteralPath.FullName -ErrorAction Stop ))
-               Write-Verbose ('World list loaded in {0} and contains {1} words' -f ((Get-Date).Subtract($wordListLoadStartTime)),$allWords.Count)
+               Write-Verbose ('Custom word list provided at path: {0}' -f $WordListLiteralPath.FullName)
+               $Script:WordCache = ([String[]] @( Get-Content -LiteralPath $WordListLiteralPath.FullName -ErrorAction Stop ))
           }
           else
           {
-               $allWords = $Script:WordCache
-               Write-Verbose ('Cached word list found. Current word count: {0}' -f $allWords.Count)
+               if ( ($Script:WordCache.Count -ne 0) -and ($ForceWordListReload.IsPresent) )
+               {
+                    Write-Verbose ('Cached word list found but a refresh of word cache is requested. Loading word list ...')
+                    $wordListLoadStartTime = (Get-Date)
+                    $Script:WordCache = ([String[]] @( Get-Content -LiteralPath $WordListLiteralPath.FullName -ErrorAction Stop ))
+                    Write-Verbose ('Word list loaded in {0} and contains {1} words' -f ((Get-Date).Subtract($wordListLoadStartTime)),$Script:WordCache.Count)
+               }
+               elseif ($Script:WordCache.Count -gt 0)
+               {
+                    Write-Verbose ('Cached word list found. Current word count: {0}' -f $Script:WordCache.Count)
+               }
+               else
+               {
+                    Write-Verbose ('No cached word list found. Loading word list ...')
+                    $wordListLoadStartTime = (Get-Date)
+                    $Script:WordCache = ([String[]] @( Get-Content -LiteralPath $WordListLiteralPath.FullName -ErrorAction Stop ))
+                    Write-Verbose ('Word list loaded in {0} and contains {1} words' -f ((Get-Date).Subtract($wordListLoadStartTime)),$Script:WordCache.Count)
+               }
           }
+
 
           Write-Verbose ('Generating password ...')
 
-          $unformattedPasswords = @(Get-Random -InputObject $allWords -SetSeed (Get-Random) -Count 4)
+          $unformattedPasswords = @(Get-Random -InputObject $Script:WordCache -SetSeed (Get-Random) -Count 4)
           $sBuilder = New-Object -TypeName System.Text.StringBuilder
           for ( $i = 0; $i -lt $unformattedPasswords.Count; $i++ )
           {
@@ -88,9 +107,23 @@ function New-WordBasedPassword
                }
           }
 
-          # Return password
-          $sBuilder.ToString().Trim()
+          $returnString = [String]::Empty
+          # Remove spaces from password if requested
+          if ($NoSpaces.IsPresent)
+          {
+               Write-Debug ('-NoSpaces Parameter IS DETECTED. WILL remove spaces')
+               $returnString = ( [String] ( $sBuilder.ToString().Replace(' ','').Trim() ) )
+          }
+          else
+          {
+               Write-Debug ('-NoSpaces parameter IS NOT DETECTED.WILL NOT remove spaces')
+               $returnString = ( [String] ($sBuilder.ToString().Trim() ) )
+          }
 
+          # Return password
+          Write-Host
+          Write-Output ( $returnString )
+          Write-Host
      }
 }
 #endregion Public-Functions
