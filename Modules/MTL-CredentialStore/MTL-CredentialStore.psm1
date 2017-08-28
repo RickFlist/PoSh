@@ -639,7 +639,7 @@ function New-WordBasedPassword
 
           Write-Verbose ('Generating password ...')
 
-          $unformattedPasswords = @(Get-Random -InputObject $Script:WordCache -SetSeed (Get-Random) -Count 4)
+          $unformattedPasswords = @(Get-Random -InputObject $Script:WordCache -SetSeed (Get-Random) -Count $WordCount)
           $sBuilder = New-Object -TypeName System.Text.StringBuilder
           for ( $i = 0; $i -lt $unformattedPasswords.Count; $i++ )
           {
