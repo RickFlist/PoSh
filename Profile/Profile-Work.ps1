@@ -1,13 +1,18 @@
 #region Script-Variables
-# Path to function library
-$Script:LibraryHost = ([Uri] ('\\max-share.osscpub.selfhost.corp.microsoft.com'))
-$Script:LibraryPathSuffix = ([String] ('\library\scripts\functions\Functions.ps1'))
+# Library paths
+$Script:LibraryHost = ( [Uri] ( '\\max-share.osscpub.selfhost.corp.microsoft.com' ) )
+$Script:LibraryPathSuffix = ( [String] ( 'library\scripts\functions' ) )
+$Script:LibraryAbsolutePath = ( [System.IO.DirectoryInfo] ( '{0}\{1}' -f $Script:LibraryHost.LocalPath,$Script:LibraryPathSuffix ) )
+$Script:CpModulesFolder = ( [System.IO.DirectoryInfo] ( 'D:\Source\MAX-CPub-Lab\Modules' ) )
 
 # SelfHost DNSSuffix
-$Script:SelfHostDnsSuffix = ([String] 'osscpub.selfhost.corp.microsoft.com')
+$Script:SelfHostDnsSuffix = ( [String] ( 'osscpub.selfhost.corp.microsoft.com' ) )
 
 # Local source repository
 $Script:RepoRootFolder = ( [System.IO.FileInfo] ( 'D:\Source' ) )
+
+# Is Corporate Connected
+$Script:CorpConnected =( [Bool] ( $false ) )
 #endregion Script-Variables
 
 #region Functions
@@ -16,19 +21,26 @@ function Import-MaxModules
      [CmdletBinding()]
      [OutputType()]
 
-     param
-     (
-          [Parameter()]
-          [ValidateNotNullOrEmpty()]
-          # Path to MAX modules
-          [System.IO.DirectoryInfo]
-          $LiteralPath = ('\\max-share\library\scripts\functions')
-     )
+     param ()
 
      process
      {
-          Get-ChildItem -LiteralPath $LiteralPath -File -Filter 'MAX*.psm1' | ForEach-Object {
-               Import-Module -Name $PSItem.FullName -Global -Force
+          # Import existing MAX functions
+          if ( ($Script:CorpConnected) -and ( Test-Path -LiteralPath $Script:LibraryAbsolutePath.FullName -PathType Container )  )
+          {
+               Get-ChildItem -LiteralPath $maxFunctionsFolder -File -Filter 'MAX*.psm1' | `
+                    ForEach-Object {
+                         Import-Module -Name $PSItem.FullName -Global -Force
+                    }
+          }
+
+          # Import CP modules
+          if ( Test-Path -LiteralPath $Script:CpModulesFolder.FullName -PathType Container )
+          {
+               Get-ChildItem -LiteralPath $Script:CpModulesFolder.FullName -Directory -Filter 'CP-*' | `
+                    ForEach-Object {
+                         Import-Module -Name $PSItem.FullName -Global -Force
+                    }
           }
      }
 }
@@ -53,37 +65,54 @@ function Register-RmProfile
 
      process
      {
-          Import-Module AzureRM.profile -Force -Global
-
-          $profPath = [System.IO.FileInfo] (Join-Path -Path $env:APPDATA -ChildPath ('AzureProfiles\AzProfile-{0}.json' -f $env:USERNAME))
-          if (-not (Test-Path -LiteralPath $profPath.Directory.FullName -PathType Container))
+          try
           {
-               $profPath.Directory.Create() | Out-Null
-          }
+               Import-Module AzureRM.profile -Force -Global
 
-          if ($Force.IsPresent)
-          {
-               $rmProfile = Login-AzureRmAccount -SubscriptionName $DefaultSubscriptionName
+               $profPath = [System.IO.FileInfo] (Join-Path -Path $env:APPDATA -ChildPath ('AzureProfiles\AzProfile-{0}.json' -f $env:USERNAME))
+               if (-not (Test-Path -LiteralPath $profPath.Directory.FullName -PathType Container))
+               {
+                    $profPath.Directory.Create() | Out-Null
+               }
 
                $profPath.Refresh()
-               if ($profPath.Exists)
+               $numDays = (-30)
+               if ( ( $profPath.Exists ) -and ( $profPath.CreationTime -gt ( (Get-Date).AddDays($numDays) ) ) )
                {
-                    Remove-Item -LiteralPath $profPath.FullName -Force
+                    Write-Host ( 'Profile cache file created on over {0} days ago on {1}. Forcing reauthentication' -f ( $numDays * -1 ),( $profPath.CreationTime.ToString('MM/dd HH:mm:ss') ) ) -ForegroundColor Red
+                    $null = $profPath.Delete()
                }
 
-               Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
-          }
-          else
-          {
-               if (-not $profPath.Exists)
+               if ($Force.IsPresent)
                {
                     $rmProfile = Login-AzureRmAccount -SubscriptionName $DefaultSubscriptionName
+
+                    $profPath.Refresh()
+                    if ($profPath.Exists)
+                    {
+                         Remove-Item -LiteralPath $profPath.FullName -Force
+                    }
+
                     Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
                }
+               else
+               {
+                    $profPath.Refresh()
+                    if (-not $profPath.Exists)
+                    {
+                         $rmProfile = Login-AzureRmAccount -SubscriptionName $DefaultSubscriptionName
+                         Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
+                    }
+               }
+
+               $azContext = Import-AzureRmContext -Path $profPath
+               Microsoft.PowerShell.Utility\Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
+          }
+          catch
+          {
+               throw ($PSItem)
           }
 
-          $azContext = Import-AzureRmContext -Path $profPath
-          Microsoft.PowerShell.Utility\Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
 
      }
 }
@@ -160,6 +189,7 @@ else
                ) -ForegroundColor DarkGray
           }
      Write-Host ('Valid corporate connection detected')
+     $Script:CorpConnected = $true
 }
 
 # Add trusted PSGallery repositories

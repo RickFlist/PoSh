@@ -757,9 +757,7 @@ function New-WordBasedPassword
           }
 
           # Return password
-          Write-Host
           Write-Output ( $returnString )
-          Write-Host
      }
 }
 
