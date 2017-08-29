@@ -1401,7 +1401,7 @@ function Update-AllModules
      Import-Module -Name PowerShellGet -Force -ErrorAction Stop
 
      Microsoft.PowerShell.Utility\Write-Host ('Retrieving a list of all modules install on the system...')
-     $allModules = (Get-Module -ListAvailable)
+     $allModules = ( Get-InstalledModule )
 
      foreach ($mod in $allModules)
      {
@@ -1434,7 +1434,6 @@ function Update-AllModules
 #endregion Misc-Utility-Commands
 
 #region Network-Commands
-
 function Test-DnsNameResolutionByConnection
 {
      [CmdletBinding()]
@@ -1449,18 +1448,23 @@ function Test-DnsNameResolutionByConnection
           [ValidateNotNullOrEmpty()]
           # DNS name(s) to resolve
           [String[]]
-          $DnsNames
+          $DnsName
+          ,
+          [Parameter()]
+          # Suppress Write-Host output
+          [Switch]
+          $Quiet
      )
 
      process
      {
           $ipPadding = (-18)
-          $dnsNamePadding = ( -( $DnsNames | Sort-Object -Property Length -Descending | Select-Object -First 1 | ForEach-Object { $PSItem.Length } ) + -4 )
+          $dnsNamePadding = ( -( $DnsName | Sort-Object -Property Length -Descending | Select-Object -First 1 | ForEach-Object { $PSItem.Length } ) + -4 )
           $separator = ('{0}-' -f ('-=' * 15))
           $ProgressPreference = 'SilentlyContinue'
 
           # Get all non-local interfaces with v4 IP addresses and IPAddress does not start with 169
-          Write-Host ('Gathering adapters with valid routable v4 IP addresses') -ForegroundColor Green
+          if ( -not $Quiet.IsPresent ) { Write-Host ('Gathering adapters with valid routable v4 IP addresses') -ForegroundColor Green }
 
           # Gather required interface information
           $iFaces = (Get-NetIPAddress -AddressFamily IPv4 | `
@@ -1489,116 +1493,90 @@ function Test-DnsNameResolutionByConnection
           )
 
           # Query DNS
-          Write-Host
-          Write-Host ('{0} interfaces found matching criteria' -f $iFaces.Count) -ForegroundColor Green
-          Write-Host
+          if ( -not $Quiet.IsPresent ) {
+               Microsoft.PowerShell.Utility\Write-Host
+               Write-Host ('{0} interfaces found matching criteria' -f $iFaces.Count) -ForegroundColor Green
+               Microsoft.PowerShell.Utility\Write-Host
+          }
+
           $iFaces | ForEach-Object {
 
-               Write-Host ('NIC: {0} - {1}' -f $PSItem.NIC,$PSItem.LocalIpAddress) -ForegroundColor Blue -BackgroundColor White
-               Write-Host ($separator * 3) -ForegroundColor Blue -BackgroundColor White
-               Write-Host
+               if ( -not $Quiet.IsPresent ) {
+                    Write-Host ('NIC: {0} - {1}' -f $PSItem.NIC,$PSItem.LocalIpAddress) -ForegroundColor Blue -BackgroundColor White
+                    Write-Host ($separator * 3) -ForegroundColor Blue -BackgroundColor White
+                    Microsoft.PowerShell.Utility\Write-Host
 
-               Write-Host ("`tNIC IP {0}: Processing {1} DNS Server IPs" -f $PSItem.LocalIpAddress,$PSItem.DnsServerIps.Count)
-               Write-Host
+                    Write-Host ("`tNIC IP {0}: Processing {1} DNS Server IPs" -f $PSItem.LocalIpAddress,$PSItem.DnsServerIps.Count)
+                    Microsoft.PowerShell.Utility\Write-Host
+               }
 
-               foreach ($ip in $PSItem.DnsServerIps)
+               foreach ($dnsIp in $PSItem.DnsServerIps)
                {
-                    Write-Host ("`t`tDNS Server {0}: Processing {1} DNS Name(s)" -f $ip,$DnsNames.Count) -ForegroundColor DarkGreen -BackgroundColor White
-                    Write-Host ("`t`t{0}" -f ($separator * 3)) -ForegroundColor DarkGreen -BackgroundColor White
-                    Write-Host
+                    if ( -not $Quiet.IsPresent ) {
+                         Write-Host ("`t`tDNS Server {0}: Processing {1} DNS Name(s)" -f $dnsIp,$DnsName.Count) -ForegroundColor DarkGreen -BackgroundColor White
+                         Write-Host ("`t`t{0}" -f ($separator * 3)) -ForegroundColor DarkGreen -BackgroundColor White
+                         Microsoft.PowerShell.Utility\Write-Host
+                    }
 
                     $resultObj = [PSCustomObject] @{
                          Index = $PSItem.Index
                          NIC = $PSItem.NIC
                          Alias = $PSItem.Alias
                          IpAddress = $PSItem.LocalIpAddress
-                         DnsServerIp = $ip
+                         DnsServerIp = $dnsIp
                          NameResolutionResult = ([PSCustomObject[]] @())
                     }
 
-                    foreach ($name in $DnsNames)
+                    foreach ($name in $DnsName)
                     {
                          Clear-DnsClientCache
 
                          $dnsResults = ([PSCustomObject] @{
                               DnsName = $name
                               CanResolveDns = $false
-                              ResolvedIpAddresses = [String]::Empty
+                              ResolvedIpAddresses = @{}
+                              DnsErrorMessage = [String]::Empty
                          })
 
-                         Write-Host ("`t`t`t`tName: {0,$dnsNamePadding}: DNS Server {1}" -f $name,$ip) -ForegroundColor Green
+                         if ( -not $Quiet.IsPresent ) { Write-Host  ("`t`t`t`tName: {0,$dnsNamePadding}: DNS Server {1}" -f $name,$dnsIp) -ForegroundColor Green }
                          try
                          {
-                              $resolvedIps = ((Resolve-DnsName -Name $name -DnsOnly -NoHostsFile -Server $ip -ErrorAction Stop).IpAddress -join ',')
+                              $dnsResult = ( Resolve-DnsName -Name $name -DnsOnly -NoHostsFile -Server $dnsIp -ErrorAction Stop )
 
                               $dnsResults.CanResolveDns = $true
-                              $dnsResults.ResolvedIpAddresses = $resolvedIps
+                              $dnsResults.DnsErrorMessage = 'Success'
+                              foreach ( $ipResult in $dnsResult )
+                              {
+                                   $dnsResults.ResolvedIpAddresses.Add($ipResult.IPAddress,$ipResult.Type)
+                              }
 
-                              Write-host ("`t`t`t`t{0,$dnsNamePadding}   : " -f 'Success - Resolved IP(s)') -ForegroundColor Green -NoNewline
-                              Write-Host ("{0}" -f $resolvedIps) -ForegroundColor White -NoTimeStamp
+                              if ( -not $Quiet.IsPresent ) {
+                                   Write-host ("`t`t`t`t{0,$dnsNamePadding}   : " -f 'Success - Resolved IP(s)') -ForegroundColor Green -NoNewline
+                                   Microsoft.PowerShell.Utility\Write-Host ( "{0}" -f ( $dnsResult.IPAddress -join ', ') ) -ForegroundColor White
+                              }
                          }
                          catch
                          {
                               $dnsResults.CanResolveDns = $false
-                              Write-host ("`t`t`t`t{0,$dnsNamePadding}      : " -f 'Error') -ForegroundColor Red -NoNewline
-                              Write-Host ("{0}" -f $PSItem.Exception.Message.Trim()) -ForegroundColor Red -NoTimeStamp
+                              $dnsResults.DnsErrorMessage = $PSItem.Exception.Message.Trim()
+
+                              if ( -not $Quiet.IsPresent ) {
+                                   Write-host ("`t`t`t`t{0,$dnsNamePadding}      : " -f 'Error') -ForegroundColor Red -NoNewline
+                                   Microsoft.PowerShell.Utility\Write-Host ("{0}" -f $PSItem.Exception.Message.Trim()) -ForegroundColor Red
+                              }
                          }
                          finally
                          {
                               $resultObj.NameResolutionResult += $dnsResults
                          }
 
-                         Write-Host
+                         if ( -not $Quiet.IsPresent ) { Microsoft.PowerShell.Utility\Write-Host }
                     }
                     Write-Output ($resultObj) -NoEnumerate
                }
           }
-          Write-Host
-     }
-}
 
-function Set-DnsSuffixList
-{
-     [CmdletBinding()]
-     [OutputType()]
-
-     param
-     (
-          [Parameter()]
-          [ValidateNotNullOrEmpty()]
-          # Suffixes to Append
-          [String[]]
-          $DnsSuffix = @('osscpub.selfhost.corp.microsoft.com')
-     )
-
-     process
-     {
-          if (-not (Get-DnsClientGlobalSetting).SuffixSearchList)
-          {
-               Microsoft.PowerShell.Utility\Write-Host ('Adding DNS suffix "') -NoNewline
-               Microsoft.PowerShell.Utility\Write-Host ('{0}' -f ($DnsSuffix -join ',')) -NoNewline
-               Microsoft.PowerShell.Utility\Write-Host ('"')
-
-               $totalSufficxes = ([String[]] (Get-DnsClientGlobalSetting).SuffixSearchList)
-               $totalSufficxes += ([String[]] ($DnsSuffix))
-
-               Set-DnsClientGlobalSetting -SuffixSearchList $totalSufficxes
-          }
-
-          Microsoft.PowerShell.Utility\Write-Host ('Attempting to resolve "') -NoNewline
-          Microsoft.PowerShell.Utility\Write-Host ('MAX-SHARE (without DNS suffix)')
-          try
-          {
-
-               $compName = 'MAX-SHARE'
-               Write-Host ('Resolving DNS for "{0}"' -f $compName)
-               Resolve-DnsName -Name $compName
-          }
-          catch
-          {
-               throw $PSItem
-          }
-
+          if ( -not $Quiet.IsPresent ) { Microsoft.PowerShell.Utility\Write-Host }
      }
 }
 #endregion Network-Commands
@@ -1656,48 +1634,6 @@ function Import-CommandHistory
           $count++
           Add-History -InputObject $entry
      }
-}
-
-function Import-MaxModules
-{
-     [CmdletBinding()]
-     [OutputType()]
-
-     param
-     (
-          [Parameter()]
-          [ValidateNotNullOrEmpty()]
-          # Path to MAX modules
-          [System.IO.DirectoryInfo]
-          $LiteralPath = ('\\max-share\library\scripts\functions')
-     )
-
-     process
-     {
-          Get-ChildItem -LiteralPath $LiteralPath -File -Filter 'MAX*.psm1' | ForEach-Object {
-               Import-Module -Name $PSItem.FullName -Global -Force
-          }
-     }
-}
-
-function Import-Profile
-{
-     # Window-Title
-     Set-PSWindowTitle -Title ('Coding - {0}' -f (Get-Date -Format 'G'))
-
-     # Path
-     Set-Location -Path 'C:\'
-
-     # Modules
-     Import-Module -Name PSReadline -Force -Global
-
-     # Aliases
-     New-Alias -Name ctc -Value ConvertTo-TitleCase -Force -Scope Global
-     New-Alias -Name clip -Value Set-Clipboard -Force -Scope Global
-     New-Alias -Name ch -Value Copy-Hostname -Force -Scope Global
-     New-Alias -Name hostname -Value Get-Hostname -Force -Scope Global
-     New-Alias -Name Set-Debug -Value Set-DebugPreference -Force -Scope Global
-     New-Alias -Name Set-Verbose -Value Set-VerbosePreference -Force -Scope Global
 }
 
 function Open-VsCodeLogFolder
@@ -1765,54 +1701,6 @@ function Prompt
      Microsoft.PowerShell.Utility\Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$('>' * ($NestedPromptLevel + 1))")
-}
-
-function Register-RmProfile
-{
-     [CmdletBinding()]
-     param
-     (
-          [Parameter()]
-          [Switch]
-          # For re-authentication of Azure account
-          $Force
-     )
-
-     process
-     {
-          Import-Module AzureRM.profile -Force -Global
-
-          $profPath = [System.IO.FileInfo] (Join-Path -Path $env:APPDATA -ChildPath ('AzureProfiles\AzProfile-{0}.json' -f $env:USERNAME))
-          if (-not (Test-Path -LiteralPath $profPath.Directory.FullName -PathType Container))
-          {
-               $profPath.Directory.Create() | Out-Null
-          }
-
-          if ($Force.IsPresent)
-          {
-               $rmProfile = Login-AzureRmAccount
-
-               $profPath.Refresh()
-               if ($profPath.Exists)
-               {
-                    Remove-Item -LiteralPath $profPath.FullName -Force
-               }
-
-               Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
-          }
-          else
-          {
-               if (-not $profPath.Exists)
-               {
-                    $rmProfile = Login-AzureRmAccount
-                    Save-AzureRmContext -Profile $rmProfile -Path $profPath -Force
-               }
-          }
-
-          $azContext = Import-AzureRmContext -Path $profPath
-          Microsoft.PowerShell.Utility\Write-Host ('Authenticated to "{0}" as "{1}" account. Current subscription is "{2}"' -f $azContext.Context.Environment.Name,$azContext.Context.Account.Id,$azContext.Context.Subscription.Name)
-
-     }
 }
 
 function Start-QLApps
@@ -2167,26 +2055,35 @@ function Register-NugetPackageSource
 #endregion Functions
 
 #region Execution
-Set-DnsSuffixList
+# Path
+Set-Location -LiteralPath $env:SystemDrive\
+
 Prompt
 if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE Host') -or ($Host.Name -eq 'Visual Studio Code Host'))
 {
 
-     Import-Profile
+     # Window-Title
+     Set-PSWindowTitle -Title ('Coding - {0}' -f (Get-Date -Format 'G'))
+
+     # Modules
+     Import-Module -Name PSReadline -Force -Global
+     Set-PsReadLineConfiguration
+
+     # Aliases
+     New-Alias -Name ctc -Value ConvertTo-TitleCase -Force -Scope Global
+     New-Alias -Name clip -Value Set-Clipboard -Force -Scope Global
+     New-Alias -Name ch -Value Copy-Hostname -Force -Scope Global
+     New-Alias -Name hostname -Value Get-Hostname -Force -Scope Global
+     New-Alias -Name Set-Debug -Value Set-DebugPreference -Force -Scope Global
+     New-Alias -Name Set-Verbose -Value Set-VerbosePreference -Force -Scope Global
 
      ### Persistent History ###
-     $HistoryFilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) .ps_history
+     $HistoryFilePath = Join-Path -Path ( [Environment]::GetFolderPath('UserProfile') ) -ChildPath '.ps_history'
      Register-EngineEvent PowerShell.Exiting -Action { Export-CommandHistory -Path $HistoryFilePath  } | Out-Null
      if (Test-path $HistoryFilePath)
      {
           Import-CommandHistory -Path $HistoryFilePath
      }
-
-     Set-PsReadLineConfiguration
-
-     # Register-RmProfile
-
-     Import-MaxModules
 
      #Set-DebugPreference -Preference Continue
      #Set-VerbosePreference -Preference Continue
