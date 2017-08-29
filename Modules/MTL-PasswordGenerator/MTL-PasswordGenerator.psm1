@@ -13,6 +13,54 @@ $Script:WordCache = ([String[]] @())
 #endregion Script-Variables
 
 #region Public-Functions
+
+function New-RandomNumber
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Minimum random number value
+          [Int]
+          $MinimumNumber = 1
+          ,
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # Maximum random number value
+          [Int]
+          $MaximumNumber = 100
+     )
+
+     process
+     {
+          # From https://stackoverflow.com/questions/6299197/rngcryptoserviceprovider-generate-number-in-a-range-faster-and-retain-distribu which references an MSDN magazine article I could not find
+
+          $rngProvider = (New-Object -TypeName System.Security.Cryptography.RNGCryptoServiceProvider)
+          while ($true)
+          {
+               if ( $MinimumNumber -eq $MaximumNumber ) { return $MaximumNumber }
+
+               $ranNumByteArr = New-Object -TypeName byte[] -ArgumentList 4
+               $rngProvider.GetBytes( $ranNumByteArr )
+               $randomNumber = [BitConverter]::ToInt32( $ranNumByteArr,0 )
+
+               $intMaxValue = (1 + [Int]::MaxValue)
+               $numRange = ( $MaximumNumber - $MinimumNumber )
+               $remainder = ( $intMaxValue - $numRange )
+
+               if ( $randomNumber -lt ( $intMaxValue - $numRange ) )
+               {
+                    $retValue = ( [Int] ( $MinimumNumber + ( $randomNumber % $numRange ) ) )
+
+                    if ($retValue -lt 0) { return ( $retValue * -1 ) } else { return $retValue }
+               }
+          }
+     }
+}
+
 function New-WordBasedPassword
 {
      [CmdletBinding()]
@@ -83,26 +131,37 @@ function New-WordBasedPassword
                }
           }
 
-
           Write-Verbose ('Generating password ...')
 
-          $unformattedPasswords = @(Get-Random -InputObject $Script:WordCache -SetSeed (Get-Random) -Count $WordCount)
-          $sBuilder = New-Object -TypeName System.Text.StringBuilder
-          for ( $i = 0; $i -lt $unformattedPasswords.Count; $i++ )
+          $selectedWordList = New-Object -TypeName System.Collections.ArrayList
+          for ( $i = 0; $i -lt $WordCount; $i++ )
           {
-               if ( ( ((Get-Random) % 2)  -eq 0  ) )
+               Write-Debug ('Password Generation Iteration {0:00}' -f $i)
+
+               $wordIndex = New-RandomNumber -MinimumNumber 0 -MaximumNumber $Script:WordCache.Count
+               Write-Debug ('Total Word Count: {0}, Word Index: {1}' -f $Script:WordCache.Count,$wordIndex)
+
+               $chosenWord = $Script:WordCache[$wordIndex]
+               $null = $selectedWordList.Add( $chosenWord )
+               Write-Debug ('Selected Word: {0}' -f $chosenWord)
+          }
+
+          $sBuilder = New-Object -TypeName System.Text.StringBuilder
+          for ( $i = 0; $i -lt $selectedWordList.Count; $i++ )
+          {
+               if ( ( ((New-RandomNumber) % 2)  -eq 0  ) )
                {
-                    $null = $sBuilder.Append( ('{0} ' -f $unformattedPasswords[$i].ToLower() ) )
+                    $null = $sBuilder.Append( ('{0} ' -f $selectedWordList[$i].ToLower() ) )
                }
                else
                {
-                    if ( ( ((Get-Random) % 2)  -eq 0  ) )
+                    if ( ( ((New-RandomNumber) % 2)  -eq 0  ) )
                     {
-                         $null = $sBuilder.Append( ('{0} ' -f  $unformattedPasswords[$i].ToUpper() ) )
+                         $null = $sBuilder.Append( ('{0} ' -f  $selectedWordList[$i].ToUpper() ) )
                     }
                     else
                     {
-                         $null = $sBuilder.Append(  ('{0} ' -f ( (Get-Culture).TextInfo.ToTitleCase( $unformattedPasswords[$i].ToLower() ) ) ) )
+                         $null = $sBuilder.Append(  ('{0} ' -f ( (Get-Culture).TextInfo.ToTitleCase( $selectedWordList[$i].ToLower() ) ) ) )
                     }
                }
           }
