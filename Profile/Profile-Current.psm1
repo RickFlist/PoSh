@@ -1,12 +1,13 @@
 #region Script-Variables
 #region For: *-Autologin
-$Script:rootRegPath = ([String] ('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'))
-$Script:autoLogonKeyName = ([String] ('AutoAdminLogon'))
-$Script:autoLoginEnabledValue = ([Int](1))
-$Script:autoLoginDisabledValue = ([Int](1))
-$Script:defDomainKeyName = ([String] ('DefaultDomainName'))
-$Script:defUsernameKeyName = ([String] ('DefaultUserName'))
-$Script:defPasswordKeyName = ([String] ('DefaultPassword'))
+$Script:rootRegPath = ( [String] ( 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon') )
+$Script:autoLogonKeyName = ( [String] ( 'AutoAdminLogon') )
+$Script:autoLoginEnabledValue = ( [Int](1) )
+$Script:autoLoginDisabledValue = ( [Int](1) )
+$Script:defDomainKeyName = ( [String] ( 'DefaultDomainName' ) )
+$Script:defUsernameKeyName = ( [String] ( 'DefaultUserName' ) )
+$Script:defPasswordKeyName = ( [String] ( 'DefaultPassword' ) )
+$Script:PoshSourceFolderRoot = ( [System.IO.FileInfo] ( 'D:\Source\PoSh' ) )
 #endregion For: *-Autologin
 #endregion Script-Variables
 
@@ -266,66 +267,6 @@ function Set-VerbosePreference
      Write-Verbose ('VerbosePrefernce: {0}' -f $VerbosePreference) -Verbose
 }
 #endregion *-*Preference
-
-#region PoSh-Development
-function Format-PoshCodeFile
-{
-     [CmdletBinding()]
-     [OutputType([String])]
-
-     param
-     (
-          [Parameter(Mandatory = $true)]
-          [ValidateNotNullOrEmpty()]
-          # Path to file to be formatted
-          [System.IO.FileInfo[]]
-          $LiteralPath
-          ,
-          [Parameter()]
-          # Output to console instead of clipboard
-          [Switch]
-          $OutputConsole
-     )
-
-     process
-     {
-          if ( -not ( Test-Path -LiteralPath $LiteralPath.FullName -PathType Leaf ) )
-          {
-               throw ( New-Object -TypeName System.IO.FileNotFoundException -ArgumentList ( 'Cannot access file "{0}"' -f $LiteralPath.FullName ) )
-          }
-
-          $fileStats = ( Get-Content .\CP-Utility.psm1 | Measure-Object -Character -Line -Word )
-          $scriptContentsRaw = ( Get-Content -LiteralPath $LiteralPath.FullName -Raw )
-          Write-Debug ( 'Retrieved contents of "{0}" containing {1} lines, {2} words, and {3} characters' -f $LiteralPath.FullName,$fileStats.Lines,$fileStats.Words,$fileStats.Characters )
-
-          $formattedScriptContents = ( $scriptContentsRaw | `
-               Format-ScriptFormatCodeIndentation |`
-               Format-ScriptReduceLineLength |`
-               Format-ScriptRemoveStatementSeparators |`
-               Format-ScriptExpandFunctionBlocks |`
-               Format-ScriptExpandNamedBlocks |`
-               Format-ScriptExpandParameterBlocks |`
-               Format-ScriptExpandStatementBlock |`
-               Format-ScriptExpandTypeAccelerators |`
-               Format-ScriptFormatCommandNames |`
-               Format-ScriptFormatTypeNames |`
-               Format-ScriptPadExpressions |`
-               Format-ScriptPadOperators |`
-               Format-ScriptRemoveSuperfluousSpaces |`
-               Format-ScriptReplaceInvalidCharacters
-          )
-
-          if ( $OutputConsole.IsPresent )
-          {
-               $formattedScriptContents | Write-Host
-          }
-          else
-          {
-               $formattedScriptContents | Set-Clipboard
-          }
-     }
-}
-#endregion PoSh-Development
 
 #region ISE-Only
 if ($Host.Name -eq 'Windows PowerShell ISE Host')
@@ -2113,6 +2054,170 @@ function Test-DnsNameResolutionByConnection
 }
 #endregion Network-Commands
 
+#region OS-And-Hardware
+function Get-MemoryChipInformation
+{
+     [CmdletBinding()]
+     [OutputType([PSCustomObject])]
+
+     param ()
+
+     begin
+     {
+          enum RamFormFactor
+          {
+               Unknown     = 0
+               Other       = 1
+               SIP         = 2
+               DIP         = 3
+               ZIP         = 4
+               SOJ         = 5
+               Proprietary = 6
+               SIMM        = 7
+               DIMM        = 8
+               TSOP        = 9
+               PGA         = 10
+               RIMM        = 11
+               SODIMM      = 12
+               SRIMM       = 13
+               SMD         = 14
+               SSMP        = 15
+               QFP         = 16
+               TQFP        = 17
+               SOIC        = 18
+               LCC         = 19
+               PLCC        = 20
+               BGA         = 21
+               FPBGA       = 22
+               LGA         = 23
+          }
+
+          enum InterleavePosition
+          {
+               Noninterleaved = 0
+               FirstPosition  = 1
+               SecondPosition = 2
+          }
+
+          enum MemoryType
+          {
+               Unknown		  = 0
+               Other		  = 1
+               DRAM			  = 2
+               Synchronous_DRAM = 3
+               Cache_DRAM	  = 4
+               EDO			  = 5
+               EDRAM		  = 6
+               VRAM			  = 7
+               SRAM			  = 8
+               RAM			  = 9
+               ROM			  = 10
+               Flash		  = 11
+               EEPROM		  = 12
+               FEPROM		  = 13
+               EPROM		  = 14
+               CDRAM		  = 15
+               ThreeDRAM		  = 16
+               SDRAM		  = 17
+               SGRAM		  = 18
+               RDRAM		  = 19
+               DDR			  = 20
+               DDR2			  = 21
+               DDR2_FB_DIMM	  = 22
+               DDR3			  = 24
+               FBD2			  = 25
+          }
+     }
+
+     process
+     {
+          $allMemSticks = ( Get-CimInstance -ClassName Win32_PhysicalMemory )
+
+          foreach ( $stick in $allMemSticks )
+          {
+               Write-Output ( [PSCustomObject] @{
+                    Name = ( $stick.Name )
+                    CapacityGb = ( [Math]::Round( ($stick.Capacity / 1gb),2 ) )
+                    Clock = ( '{0} [Max: {1}]' -f $stick.Speed,$stick.ConfiguredClockSpeed  )
+                    BankLabel = ( $stick.BankLabel )
+                    FormFactor = ( [RamFormFactor] ( $stick.FormFactor) )
+                    MemoryType = ( [MemoryType] ( $stick.MemoryType ) )
+                    CurrentClockSpeed = ( $stick.Speed )
+                    SetClockSpeed = ( $stick.ConfiguredClockSpeed )
+                    DeviceLocation = ( $stick.DeviceLocator )
+                    CapacityBytes = ([Decimal] ( $stick.Capacity ) )
+                    Bitness = ( $stick.DataWidth )
+                    PartNumber = ( $stick.PartNumber )
+                    Manufacturer = ( $stick.Manufacturer )
+                    InterleaveDataDepth = ( $stick.InterleaveDataDepth  )
+                    InterleavePosition = ( [InterleavePosition] ( $stick.InterleavePosition ) )
+                    CimClassName = ( 'Win32_PhysicalMemory' )
+               } )
+          }
+     }
+}
+#endregion OS-And-Hardware
+
+#region PoSh-Development
+function Format-PoshCodeFile
+{
+     [CmdletBinding()]
+     [OutputType([String])]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # Path to file to be formatted
+          [System.IO.FileInfo[]]
+          $LiteralPath
+          ,
+          [Parameter()]
+          # Output to console instead of clipboard
+          [Switch]
+          $OutputConsole
+     )
+
+     process
+     {
+          if ( -not ( Test-Path -LiteralPath $LiteralPath.FullName -PathType Leaf ) )
+          {
+               throw ( New-Object -TypeName System.IO.FileNotFoundException -ArgumentList ( 'Cannot access file "{0}"' -f $LiteralPath.FullName ) )
+          }
+
+          $fileStats = ( Get-Content .\CP-Utility.psm1 | Measure-Object -Character -Line -Word )
+          $scriptContentsRaw = ( Get-Content -LiteralPath $LiteralPath.FullName -Raw )
+          Write-Debug ( 'Retrieved contents of "{0}" containing {1} lines, {2} words, and {3} characters' -f $LiteralPath.FullName,$fileStats.Lines,$fileStats.Words,$fileStats.Characters )
+
+          $formattedScriptContents = ( $scriptContentsRaw | `
+               Format-ScriptFormatCodeIndentation |`
+               Format-ScriptReduceLineLength |`
+               Format-ScriptRemoveStatementSeparators |`
+               Format-ScriptExpandFunctionBlocks |`
+               Format-ScriptExpandNamedBlocks |`
+               Format-ScriptExpandParameterBlocks |`
+               Format-ScriptExpandStatementBlock |`
+               Format-ScriptExpandTypeAccelerators |`
+               Format-ScriptFormatCommandNames |`
+               Format-ScriptFormatTypeNames |`
+               Format-ScriptPadExpressions |`
+               Format-ScriptPadOperators |`
+               Format-ScriptRemoveSuperfluousSpaces |`
+               Format-ScriptReplaceInvalidCharacters
+          )
+
+          if ( $OutputConsole.IsPresent )
+          {
+               $formattedScriptContents | Write-Host
+          }
+          else
+          {
+               $formattedScriptContents | Set-Clipboard
+          }
+     }
+}
+#endregion PoSh-Development
+
 #region Profile-Commands
 function Copy-VsLogs
 {
@@ -2223,6 +2328,24 @@ function Import-CommandHistory
      }
 }
 
+function Import-ProfileModules
+{
+     [CmdletBinding()]
+     [OutputType([OutputType])]
+
+     param ()
+
+     process
+     {
+          Import-Module -Name ( '{0}\Profile\Profile-Current.psm1' -f $Script:PoshSourceFolderRoot.FullName ) -Scope Global -Force
+
+          if ($env:USERDOMAIN -ne $env:COMPUTERNAME)
+          {
+               Import-Module -Name ( '{0}\Profile\Profile-Work.psm1' -f $Script:PoshSourceFolderRoot.FullName ) -Scope Global -Force
+          }
+     }
+}
+
 function Open-VsCodeLogFolder
 {
      [CmdletBinding()]
@@ -2288,6 +2411,19 @@ function Prompt
      Microsoft.PowerShell.Utility\Write-Host ("CWD: ") -ForegroundColor DarkGray -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$($executionContext.SessionState.Path.CurrentLocation.ProviderPath.TrimEnd('\'))\") -ForegroundColor Green -NoNewline
      Microsoft.PowerShell.Utility\Write-Host ("$('>' * ($NestedPromptLevel + 1))")
+}
+
+function Show-CommandHistory
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          ( Get-History | Format-Table -AutoSize -Wrap )
+     }
 }
 
 function Start-QLApps
