@@ -1918,7 +1918,7 @@ namespace Netzwerker.Network.Diagnostics
 }
 "@
           Add-Type $source
-          $ArpResults = ( [Netzwerker.Network.Diagnostics.ArpHost]::Get() | Sort-Object -Property IndexAdapter )
+          c
 
           foreach ( $arpEntry in $ArpResults.GetEnumerator() )
           {
