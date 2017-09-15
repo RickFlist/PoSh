@@ -45,7 +45,7 @@ function Import-MaxModules
      }
 }
 
-function Register-RmProfile
+function Register-RmProfileC, bu
 {
      [CmdletBinding()]
      param
@@ -76,12 +76,6 @@ function Register-RmProfile
                }
 
                $profPath.Refresh()
-               $numDays = (-30)
-               if ( ( $profPath.Exists ) -and ( $profPath.CreationTime -gt ( (Get-Date).AddDays($numDays) ) ) )
-               {
-                    Write-Host ( 'Profile cache file created on over {0} days ago on {1}. Forcing reauthentication' -f ( $numDays * -1 ),( $profPath.CreationTime.ToString('MM/dd HH:mm:ss') ) ) -ForegroundColor Red
-                    $null = $profPath.Delete()
-               }
 
                if ($Force.IsPresent)
                {
@@ -114,6 +108,46 @@ function Register-RmProfile
           }
 
 
+     }
+}
+
+function Save-RmProfile
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter()]
+          [ValidateNotNullOrEmpty()]
+          # PSProfile objecting containing cachable authentication infomration
+          [Microsoft.Azure.Commands.Profile.Models.PSAzureProfile]
+          $AzureProfile
+     )
+
+     process
+     {
+          if ( -not $PSBoundParameters.ContainsKey('AzureProfile') )
+          {
+               $AzureProfile = ( Login-AzureRmAccount )
+          }
+
+          $profPath = [System.IO.FileInfo] (Join-Path -Path $env:APPDATA -ChildPath ('AzureProfiles\AzProfile-{0}.json' -f $env:USERNAME))
+          if (-not (Test-Path -LiteralPath $profPath.Directory.FullName -PathType Container))
+          {
+               $profPath.Directory.Create() | Out-Null
+          }
+
+          try
+          {
+               $null = Save-AzureRmContext -Profile $AzureProfile -Path $profPath -Force
+          }
+          catch
+          {
+               throw ($PSItem)
+          }
+
+          Write-Host ('Azure profile for "{0}" saved to "{1}"' -f $AzureProfile.Context.Account.Id,$profPath.FullName  )
      }
 }
 

@@ -1,3 +1,8 @@
+#region Configure-Module
+#Requires -Version 5.0
+#Requires -RunAsAdministrator
+Set-StrictMode -Version Latest
+#endregion Configure-Module
 #region Script-Variables
 [string]$script:DebugPreviousLineMoniker = ([string]::Empty)
 [bool]$script:DebugPrvsLineMatch = ($false)
@@ -640,60 +645,47 @@ function Write-Host
 #region Private-Functions
 function Get-CallStack
 {
-     #region Function-Parameters
      Param
      (
           [CmdletBinding(
                DefaultParameterSetName = "StackIndex",
-               SupportsShouldProcess = $false,
                ConfirmImpact = "Low"
           )]
 
-          ### ParameterSet - CommandName Function-Parameters ###
-
-          #region 00 - $CommandName
           [Parameter(
                Position = 00,
                Mandatory = $true,
-               ParameterSetName = "CommandName",
-               HelpMessage = "Trim stack until first instance of this command name is found"
+               ParameterSetName = "CommandName"
           )]
           [ValidateNotNullOrEmpty()]
-          [string] $CommandName
-          #endregion -- - $CommandName
-
-          ### ParameterSet - StackIndex Function-Parameters ###
+          # Trim stack until first instance of this command name is found
+          [string]
+          $CommandName
           ,
-          #region 00 - $StackIndex
           [Parameter(
                Position = 00,
-               ParameterSetName = "StackIndex",
-               HelpMessage = "Number of stacks to remove from top of stack"
+               ParameterSetName = "StackIndex"
           )]
           [ValidateNotNullOrEmpty()]
-          [int] $StackIndex = 1
-          #endregion -- - $StackIndex
-
+          # Number of stacks to remove from top of stack
+          [int]
+          $StackIndex = 1
      )
-     #endregion Function-Parameters
 
-     #region Process {}
      PROCESS
      {
           # Return Value
           [System.Management.Automation.CallStackFrame[]]$ReturnVal = ([System.Management.Automation.CallStackFrame[]]@())
 
-          #region Get-PsCallStack
+          # Get raw callstack
           $CStack = @(Get-PSCallStack)
-          #endregion Get-PsCallStack
 
           #region ParameterSet-Specific-Actions
           switch ($PsCmdlet.ParameterSetName)
           {
-               #region ParameterSet-CommandName
                "CommandName"
                {
-                    #region Find-Index-Using-Command-Name
+                    # Find index using command name
                     [int]$StackIndex = 0
                     :FindCommand foreach ($Layer in $CStack)
                     {
@@ -701,53 +693,17 @@ function Get-CallStack
                          {
                               break FindCommand
                          }
+                         $StackIndex++
                     }
-                    #endregion Find-Index-Using-Command-Name
 
                     break
                }
-               #endregion ParameterSet-CommandName
-               #region ParameterSet-StackIndex
                "StackIndex" { break }
-               #endregion ParameterSet-StackIndex
           }
-          #endregion ParameterSet-Specific-Actions
 
-          #region Out-Debug
-          #
-          #            -NewLines 2 `
-          #            -Invocation ($MyInvocation)
-          #endregion Out-Debug
+          $CsEndIndex = ($CStack.Count - 1)
 
-          $CsEndIndex = ($CStack.Count)
-
-          #region Out-Debug
-          #
-          #            ($StackIndex),`
-          #            ($CsEndIndex)
-          #        ) -Invocation ($MyInvocation)
-          #
-          #
-          #            ($StackIndex),`
-          #            ($CsEndIndex)
-          #        ) -Invocation ($MyInvocation)
-          #
-          #
-          #            ($CStack.Count)
-          #        ) -Invocation ($MyInvocation)
-          #
-          #
-          #            ($CsEndIndex - $StackIndex)
-          #        ) -Invocation ($MyInvocation)
-          #endregion Out-Debug
-
-          $ReturnVal = @(($CStack)[$StackIndex..$CsEndIndex])
-
-          #region Out-Debug
-          #
-          #            ($ReturnVal.Count)
-          #        ) -Invocation ($MyInvocation)
-          #endregion Out-Debug
+          $ReturnVal = @( $CStack[$StackIndex..$CsEndIndex] )
 
           Write-Output ($ReturnVal)
      }
