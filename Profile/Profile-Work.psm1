@@ -28,7 +28,7 @@ function Import-MaxModules
           # Import existing MAX functions
           if ( ($Script:CorpConnected) -and ( Test-Path -LiteralPath $Script:LibraryAbsolutePath.FullName -PathType Container )  )
           {
-               Get-ChildItem -LiteralPath $maxFunctionsFolder -File -Filter 'MAX*.psm1' | `
+               Get-ChildItem -LiteralPath $Script:CpModulesFolder -File -Filter 'MAX*.psm1' | `
                     ForEach-Object {
                          Import-Module -Name $PSItem.FullName -Global -Force
                     }
@@ -45,7 +45,7 @@ function Import-MaxModules
      }
 }
 
-function Register-RmProfileC, bu
+function Register-RmProfile
 {
      [CmdletBinding()]
      param

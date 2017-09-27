@@ -7,6 +7,7 @@ $Script:autoLoginDisabledValue = ([Int](1))
 $Script:defDomainKeyName = ([String] ('DefaultDomainName'))
 $Script:defUsernameKeyName = ([String] ('DefaultUserName'))
 $Script:defPasswordKeyName = ([String] ('DefaultPassword'))
+$Script:PersonalModulesFolder = ( [System.IO.DirectoryInfo] ( 'D:\Source\PoSh\Profile' ) )
 #endregion For: *-Autologin
 #endregion Script-Variables
 
@@ -2220,6 +2221,32 @@ function Import-CommandHistory
      {
           Write-Host ('Invalid XML detected. Clearing history file') -ForegroundColor DarkGray
           $null = Remove-Item -LiteralPath $Path.FullName -Force
+     }
+}
+
+function Import-PersonalModules
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          if ( -not ( Test-Path -LiteralPath $Script:PersonalModulesFolder.FullName -PathType Container ) )
+          {
+               throw ( New-Object -TypeName System.IO.DirectoryInfo -ArgumentList ( 'Cannot access personal modules folder at {0}' -f $Script:PersonalModulesFolder.FullName ) )
+          }
+
+          Import-Module -Name ( '{0}\Profile-Current.psm1' -f $Script:PersonalModulesFolder.FullName ) -Scope Global -Force
+
+          if ($env:USERDOMAIN -ne $env:COMPUTERNAME)
+          {
+               Import-Module -Name ( '{0}\Profile-Work.psm1' -f $Script:PersonalModulesFolder.FullName ) -Scope Global -Force
+          }
+
+
+          $Script:PersonalModulesFolder
      }
 }
 
