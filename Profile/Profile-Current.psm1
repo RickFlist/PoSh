@@ -1,6 +1,5 @@
 #region Script-Variables
-#region For: *-Autologin
-<<<<<<< HEAD
+# For: *-Autologin
 $Script:rootRegPath = ([String] ('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'))
 $Script:autoLogonKeyName = ([String] ('AutoAdminLogon'))
 $Script:autoLoginEnabledValue = ([Int](1))
@@ -8,18 +7,9 @@ $Script:autoLoginDisabledValue = ([Int](1))
 $Script:defDomainKeyName = ([String] ('DefaultDomainName'))
 $Script:defUsernameKeyName = ([String] ('DefaultUserName'))
 $Script:defPasswordKeyName = ([String] ('DefaultPassword'))
+
+# For: Import-ProfileModules
 $Script:PersonalModulesFolder = ( [System.IO.DirectoryInfo] ( 'D:\Source\PoSh\Profile' ) )
-=======
-$Script:rootRegPath = ( [String] ( 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon') )
-$Script:autoLogonKeyName = ( [String] ( 'AutoAdminLogon') )
-$Script:autoLoginEnabledValue = ( [Int](1) )
-$Script:autoLoginDisabledValue = ( [Int](1) )
-$Script:defDomainKeyName = ( [String] ( 'DefaultDomainName' ) )
-$Script:defUsernameKeyName = ( [String] ( 'DefaultUserName' ) )
-$Script:defPasswordKeyName = ( [String] ( 'DefaultPassword' ) )
-$Script:PoshSourceFolderRoot = ( [System.IO.FileInfo] ( 'D:\Source\PoSh' ) )
->>>>>>> 1b38a6d9fe84e8c8394cd281df8a6a62a6fa309d
-#endregion For: *-Autologin
 #endregion Script-Variables
 
 #region Functions
