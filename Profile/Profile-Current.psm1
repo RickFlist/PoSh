@@ -661,6 +661,11 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      #    }
      #endregion ISE-Comments
 
+     # ISE Steroids
+     if ( Get-Module -Name 'ISESteroids' -ListAvailable )
+     {
+          Import-Module -Name 'ISESteroids' -Force -Global
+     }
 }
 #endregion ISE-Only
 
@@ -702,7 +707,28 @@ function Export-DirectoryAcl
                     Select-Object @{N = "Path"; E = {Convert-Path $PSItem.Path}} -ExpandProperty Access | `
                     Export-Csv -LiteralPath $OutputFile.FullName -NoTypeInformation -Append
           }
-     }
+<#
+.SYNOPSIS
+Short description
+
+.DESCRIPTION
+Long description
+
+.PARAMETER Path
+Parameter description
+
+.PARAMETER Include
+Parameter description
+
+.PARAMETER Exclude
+Parameter description
+
+.EXAMPLE
+An example
+
+.NOTES
+General notes
+#>   }
 }
 
 function Export-ShareAcl
