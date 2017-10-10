@@ -194,6 +194,7 @@ Set-Alias -Name 'im' -Value 'Import-Module'
 Set-Alias -Name 'wh' -Value 'Write-Host'
 Set-Alias -Name 'sel-sub' -Value 'Select-AzureRmSubscription'
 
+<#
 Write-Host ('Verifying corporate connectivity. This can take awhile if not connected') -ForegroundColor Gray
 $resolutionResults = ( Test-DnsNameResolutionByConnection -DnsName $Script:LibraryHost.Host -Quiet | Where-Object { $PSItem.NIC -match 'VPN' } )
 
@@ -225,6 +226,7 @@ else
      Write-Host ('Valid corporate connection detected')
      $Script:CorpConnected = $true
 }
+#>
 
 # Add trusted PSGallery repositories
 $psGalleryUntrusted = Get-PSRepository | Where-Object {$PSItem.Name -eq 'PSGallery' -and $PSItem.InstallationPolicy -eq 'Untrusted'}
