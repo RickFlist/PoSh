@@ -52,7 +52,7 @@ function Register-RmProfile
      (
           [Parameter()]
           [ValidateNotNullOrEmpty()]
-          [ValidateSet('Office CPub Production 1','MAX CPub Lab - Test 1','MAX CPub Lab - DevTest','MAX CPub Lab - Dedicated Corpnet','Office CPub ContentQA','MAX CPub Lab - Dedicated Corpnet 2','Office CPub Production 2')]
+          [ValidateSet('MAXLAB R&D EXT 1','MAXLAB R&D EXT 2','MAXLAB R&D INT 1','MAXLAB R&D INT 2','MAXLAB R&D Primary','MAXLAB R&D Sandbox','MAXLAB R&D Self Service')]
           # Subscription to deploy to
           [String]
           $DefaultSubscriptionName = 'Office CPub ContentQA'

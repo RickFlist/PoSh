@@ -666,6 +666,12 @@ if ($Host.Name -eq 'Windows PowerShell ISE Host')
      {
           Import-Module -Name 'ISESteroids' -Force -Global
      }
+
+     # ISEModuleBrowserAddon
+     if ( Get-Module -Name 'ISEModuleBrowserAddon' -ListAvailable )
+     {
+          Import-Module -Name 'ISEModuleBrowserAddon' -Force -Global
+     }
 }
 #endregion ISE-Only
 
@@ -2375,6 +2381,39 @@ function Export-VsCodeUserProfile
      }
 }
 
+function Install-ChocolateyProvider
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param ()
+
+     process
+     {
+          $pName = ( 'Chocolatey' )
+
+          $isInstalled = ( Get-PackageProvider | Where-Object { $PSItem.Name -eq $pName } )
+
+          if ( -not $isInstalled )
+          {
+               try
+               {
+
+                    $installResult = Install-PackageProvider -Name $pName -Force -ForceBootstrap -Scope AllUsers
+                    Write-Host ( '{0} (v{1}) installed successfully' -f $pName,$installResult.Version.ToString() )
+               }
+               catch
+               {
+                    throw ( $PSItem )
+               }
+          }
+          else
+          {
+               Write-Verbose ( '{0} (v{1}) package provider already installed' -f $pName,$isInstalled.Version.ToString() )
+          }
+     }
+}
+
 function Import-CommandHistory
 {
      [CmdletBinding()]
@@ -2892,7 +2931,7 @@ function ConvertTo-H264Mp4
 # Path
 Set-Location -LiteralPath $env:SystemDrive\
 
-if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE Host') -or ($Host.Name -eq 'Visual Studio Code Host'))
+if ( ($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE Host') )
 {
 
      # Window-Title
@@ -2921,6 +2960,8 @@ if (($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE H
      #Set-DebugPreference -Preference Continue
      #Set-VerbosePreference -Preference Continue
      Set-InformationPreference -Preference Continue
+
+     Install-ChocolateyProvider
 }
 
 Prompt
