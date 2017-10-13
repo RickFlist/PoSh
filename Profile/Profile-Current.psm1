@@ -2237,6 +2237,49 @@ function Get-MemoryChipInformation
           }
      }
 }
+
+function Set-OsHibernation
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          [ValidateSet('On','Off')]
+          # Set Hibernation on or of
+          [String]
+          $State
+          ,
+          [ValidateNotNullOrEmpty()]
+          [ValidateRange(40,100)]
+          # Percentage of memory to commit to hibernation file. Cannot be lower than 40%
+          [Int]
+          $MemoryPercentage
+          ,
+          [ValidateNotNullOrEmpty()]
+          [ValidateSet('Reduced','Full')]
+          # Reduced or full hibernation file
+          [String]
+          $Type
+     )
+
+     process
+     {
+          $null = ( powercfg.exe /HIBERNATE $State )
+
+          if ( $PSBoundParameters.ContainsKey( 'MemoryPercentage' ) )
+          {
+              $null = ( powercfg.exe /HIBERNATE /SIZE $MemoryPercentage )
+          }
+
+          if ( $PSBoundParameters.ContainsKey( 'Type' ) )
+          {
+              $null = ( POWERCFG /HIBERNATE /TYPE $Type )
+          }
+     }
+}
 #endregion OS-And-Hardware
 
 #region PoSh-Development
