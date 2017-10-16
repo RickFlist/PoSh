@@ -2849,6 +2849,26 @@ function Set-PSWindowTitle
 
      $Host.UI.RawUI.WindowTitle = $Title
 }
+
+function Show-Command
+{
+     [CmdletBinding()]
+     [OutputType()]
+
+     param
+     (
+          [Parameter(Mandatory = $true)]
+          [ValidateNotNullOrEmpty()]
+          # Nouse to search for
+          [String]
+          $Noun
+     )
+
+     process
+     {
+          ( Get-Command -Noun $Noun | Sort-Object -Property Source,Name | Format-Table -Autosize -Wrap | Out-String -Width 1000 ).Trim() | Out-Host
+     }
+}
 #endregion Shell-Commands
 
 #region ffMpeg-Cmdlets
