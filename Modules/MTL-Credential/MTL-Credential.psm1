@@ -14,6 +14,9 @@ $Script:CertPfxDefaultPassword = '#Ny@e85PaLV5umb' <# Yes, I am aware the gaping
 # DateStamp format
 $Script:DateStampFormat = 'yyyyMMdd HH:mm:ss'
 
+# For: New-WordBasedPassword
+$Script:PasswordWordList = ( [IO.FileInfo] ( Join-Path -Path $PSScriptRoot -ChildPath 'lib\words.txt') )
+
 # for display purposes
 $Script:HeaderCharacters = ('=' * 20)
 #endregion Script-Variables
@@ -270,7 +273,7 @@ function New-WordBasedPassword
           [ValidateNotNullOrEmpty()]
           # Absolute path to file containing word list. Words must be a plain text file with each word or phrase on a single line
           [System.IO.FileInfo]
-          $WordListLiteralPath = ($Script:PasswordWordList)
+          $WordListLiteralPath = ( $Script:PasswordWordList )
           ,
           [Parameter()]
           # Forces reload of the world list if it is already cached
@@ -284,7 +287,8 @@ function New-WordBasedPassword
      )
 
      process
-     {
+     {  
+          
           Write-Debug ('Word list expected location: {0}' -f $WordListLiteralPath.FullName)
 
           if (-not (Test-Path -LiteralPath $WordListLiteralPath.FullName -PathType Leaf))
