@@ -3200,5 +3200,13 @@ if ( ($Host.Name -eq 'ConsoleHost') -or ($Host.Name -eq 'Windows PowerShell ISE 
     Install-ChocolateyProvider
 }
 
+# Add trusted PSGallery repositories
+$psGalleryUntrusted = Get-PSRepository | Where-Object {$PSItem.Name -eq 'PSGallery' -and $PSItem.InstallationPolicy -eq 'Untrusted'}
+if ($psGalleryUntrusted)
+{
+     Write-Host ('Setting PSGallery to "Trusted"')
+     Set-PSRepository -Name $psGalleryUntrusted.Name -InstallationPolicy Trusted
+}
+
 Prompt
 #endregion Execution
